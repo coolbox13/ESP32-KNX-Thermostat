@@ -1,15 +1,13 @@
 #include "knx_interface.h"
 
-// Constructor
 KNXInterface::KNXInterface() : thermostatState(nullptr) {
-  // Initialize group addresses to default values (3/1/0, 3/2/0, etc.)
+  // Initialize group addresses to default values
   temperatureGA = calculateGA(3, 1, 0);
   setpointGA = calculateGA(3, 2, 0);
   valvePositionGA = calculateGA(3, 3, 0);
   modeGA = calculateGA(3, 4, 0);
 }
 
-// Initialize KNX communication
 bool KNXInterface::begin(int area, int line, int member) {
   // Start KNX communication
   if (!knx.start(nullptr)) {
@@ -18,12 +16,12 @@ bool KNXInterface::begin(int area, int line, int member) {
   }
   
   // Set physical address
-  address_t physical;
-  physical.pa.area = area;
-  physical.pa.line = line;
-  physical.pa.member = member;
+  address_t physicalAddr;
+  physicalAddr.pa.area = area;
+  physicalAddr.pa.line = line;
+  physicalAddr.pa.member = member;
   
-  if (!knx.physical_address_set(physical)) {
+  if (!knx.physical_address_set(physicalAddr)) {
     Serial.println("Failed to set KNX physical address");
     return false;
   }
@@ -36,82 +34,109 @@ bool KNXInterface::begin(int area, int line, int member) {
   return true;
 }
 
-// Register with thermostat state
 void KNXInterface::registerCallbacks(ThermostatState* state) {
   thermostatState = state;
   
-  // Register callbacks to send updates to KNX when thermostat state changes
+  // Register callbacks only if thermostat state is available
   if (thermostatState) {
+    // When temperature changes, send to KNX
     thermostatState->onTemperatureChanged = [this](float temp) {
       this->sendTemperature(temp);
     };
     
+    // When setpoint changes, send to KNX
     thermostatState->onSetpointChanged = [this](float setpoint) {
       this->sendSetpoint(setpoint);
     };
     
+    // When valve position changes, send to KNX
     thermostatState->onValvePositionChanged = [this](float position) {
       this->sendValvePosition(position);
     };
     
+    // When operating mode changes, send to KNX
     thermostatState->onModeChanged = [this](ThermostatMode mode) {
       this->sendMode(mode);
     };
   }
 }
 
-// Set group address for temperature
-void KNXInterface::setTemperatureGA(int area, int line, int member) {
-  temperatureGA = calculateGA(area, line, member);
-}
-
-// Set group address for setpoint
-void KNXInterface::setSetpointGA(int area, int line, int member) {
-  setpointGA = calculateGA(area, line, member);
-  
-  // Re-register callback for the new group address
-  registerKNXCallbacks();
-}
-
-// Set group address for valve position
-void KNXInterface::setValvePositionGA(int area, int line, int member) {
-  valvePositionGA = calculateGA(area, line, member);
-}
-
-// Set group address for mode
-void KNXInterface::setModeGA(int area, int line, int member) {
-  modeGA = calculateGA(area, line, member);
-  
-  // Re-register callback for the new group address
-  registerKNXCallbacks();
-}
-
-// Process KNX loop
 void KNXInterface::loop() {
+  // Process KNX communications
   knx.loop();
 }
 
-// Send temperature to KNX (DPT 9.001 - Temperature)
+void KNXInterface::setTemperatureGA(int area, int line, int member) {
+  temperatureGA = calculateGA(area, line, member);
+  Serial.printf("KNX Temperature GA set to %d/%d/%d\n", area, line, member);
+}
+
+void KNXInterface::setSetpointGA(int area, int line, int member) {
+  setpointGA = calculateGA(area, line, member);
+  Serial.printf("KNX Setpoint GA set to %d/%d/%d\n", area, line, member);
+  registerKNXCallbacks(); // Re-register callbacks for new addresses
+}
+
+void KNXInterface::setValvePositionGA(int area, int line, int member) {
+  valvePositionGA = calculateGA(area, line, member);
+  Serial.printf("KNX Valve Position GA set to %d/%d/%d\n", area, line, member);
+}
+
+void KNXInterface::setModeGA(int area, int line, int member) {
+  modeGA = calculateGA(area, line, member);
+  Serial.printf("KNX Mode GA set to %d/%d/%d\n", area, line, member);
+  registerKNXCallbacks(); // Re-register callbacks for new addresses
+}
+
 bool KNXInterface::sendTemperature(float temperature) {
-  return knx.write_2byte_float(temperatureGA, temperature);
+  // DPT 9.001 - Temperature (2-byte float)
+  if (knx.write_2byte_float(temperatureGA, temperature)) {
+    Serial.printf("Temperature sent to KNX: %.2f°C\n", temperature);
+    return true;
+  } else {
+    Serial.println("Failed to send temperature to KNX");
+    return false;
+  }
 }
 
-// Send setpoint to KNX (DPT 9.001 - Temperature)
 bool KNXInterface::sendSetpoint(float setpoint) {
-  return knx.write_2byte_float(setpointGA, setpoint);
+  // DPT 9.001 - Temperature (2-byte float)
+  if (knx.write_2byte_float(setpointGA, setpoint)) {
+    Serial.printf("Setpoint sent to KNX: %.2f°C\n", setpoint);
+    return true;
+  } else {
+    Serial.println("Failed to send setpoint to KNX");
+    return false;
+  }
 }
 
-// Send valve position to KNX (DPT 5.001 - Percentage)
 bool KNXInterface::sendValvePosition(float position) {
-  return knx.write_1byte_uint(valvePositionGA, (uint8_t)position);
+  // Ensure position is within 0-100 range
+  uint8_t scaledPosition = constrain(position, 0, 100);
+  
+  // DPT 5.001 - Percentage (1-byte unsigned)
+  if (knx.write_1byte_uint(valvePositionGA, scaledPosition)) {
+    Serial.printf("Valve position sent to KNX: %.1f%%\n", position);
+    return true;
+  } else {
+    Serial.println("Failed to send valve position to KNX");
+    return false;
+  }
 }
 
-// Send mode to KNX (DPT 5.xxx - Unsigned Value)
 bool KNXInterface::sendMode(ThermostatMode mode) {
-  return knx.write_1byte_uint(modeGA, (uint8_t)mode);
+  // DPT 5.xxx - Unsigned Value (1-byte unsigned)
+  uint8_t modeValue = static_cast<uint8_t>(mode);
+  
+  if (knx.write_1byte_uint(modeGA, modeValue)) {
+    Serial.printf("Mode sent to KNX: %d\n", modeValue);
+    return true;
+  } else {
+    Serial.println("Failed to send mode to KNX");
+    return false;
+  }
 }
 
-// Helper to calculate group address
 address_t KNXInterface::calculateGA(int area, int line, int member) {
   address_t tmp;
   tmp.ga.area = area;
@@ -120,21 +145,18 @@ address_t KNXInterface::calculateGA(int area, int line, int member) {
   return tmp;
 }
 
-// KNX callback for setpoint
 void KNXInterface::handleSetpointCallback(message_t const &msg, void *arg) {
   KNXInterface* instance = static_cast<KNXInterface*>(arg);
   
   if (instance && instance->thermostatState && msg.data_len >= 2) {
     // KNX DPT 9.001 is 2-byte float
     float newSetpoint = knx.dpt2_to_float(msg.data[0], msg.data[1]);
-    Serial.print("Received setpoint from KNX: ");
-    Serial.println(newSetpoint);
+    Serial.printf("Received setpoint from KNX: %.2f°C\n", newSetpoint);
     
     instance->thermostatState->setTargetTemperature(newSetpoint);
   }
 }
 
-// KNX callback for mode
 void KNXInterface::handleModeCallback(message_t const &msg, void *arg) {
   KNXInterface* instance = static_cast<KNXInterface*>(arg);
   
@@ -142,15 +164,16 @@ void KNXInterface::handleModeCallback(message_t const &msg, void *arg) {
     uint8_t modeValue = msg.data[0];
     ThermostatMode newMode = static_cast<ThermostatMode>(modeValue);
     
-    Serial.print("Received mode from KNX: ");
-    Serial.println(modeValue);
+    Serial.printf("Received mode from KNX: %d\n", modeValue);
     
     instance->thermostatState->setMode(newMode);
   }
 }
 
-// Helper for registering with KNX callbacks
 void KNXInterface::registerKNXCallbacks() {
+  // Note: The esp-knx-ip library doesn't have a direct method to unregister callbacks
+  // When registering with the same name and group address, it should overwrite previous callbacks
+  
   // Register for setpoint changes
   knx.callback_register("SetpointReceived", setpointGA, handleSetpointCallback, this);
   

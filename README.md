@@ -1,88 +1,103 @@
 # ESP32-KNX-Thermostat
 
-A comprehensive thermostat solution for ESP32/ESP8266 with KNX integration, providing direct control of KNX heating valves.
+A modular thermostat solution for ESP32/ESP8266 with KNX integration, providing direct control of KNX heating valves. This project integrates BME280 temperature/humidity/pressure sensing with KNX communication and advanced PID control.
+
+## Architecture
+
+The project follows a modular architecture with clear separation of concerns:
+
+- **Configuration Management**: Handles settings and persistent storage
+- **Sensor Interface**: Manages BME280 sensor readings
+- **KNX Interface**: Handles KNX communication
+- **MQTT Interface**: Optional integration with Home Assistant
+- **PID Controller**: Implements the control algorithm
+- **Web Interface**: Provides configuration UI
+- **Thermostat State**: Central state management with event callbacks
 
 ## Features
 
-- **KNX Integration**: Direct communication with KNX heating valves and other KNX devices
-- **Temperature, Humidity and Pressure Sensing**: Uses BME280 sensor for accurate environmental measurements
-- **PID Controller**: Advanced temperature control with configurable PID parameters
-- **Web Configuration Interface**: Easy setup through a browser-based interface
-- **WiFi Manager**: Simple WiFi configuration through captive portal
-- **MQTT Support**: Optional integration with Home Assistant and other MQTT systems
-- **Multiple Operating Modes**: Comfort, Economy, Away, and Anti-freeze modes
-- **Persistent Configuration**: All settings stored in flash memory
-- **Multi-Platform**: Works on both ESP32 and ESP8266
+- **Direct KNX Communication**: Controls heating valves via KNX
+- **Environmental Monitoring**: Temperature, humidity, pressure sensing
+- **Web Configuration**: Easy setup through browser interface
+- **WiFi Manager**: Simple network setup with captive portal
+- **MQTT Support**: Integration with Home Assistant
+- **PID Control**: Advanced temperature regulation
+- **Persistent Settings**: All configuration stored in flash memory
 
 ## Hardware Requirements
 
-- ESP32 or ESP8266 development board (NodeMCU ESP32-S recommended)
+- ESP32 or ESP8266 (NodeMCU ESP32-S recommended)
 - BME280 temperature/humidity/pressure sensor
-- Power supply (5V or 3.3V depending on your board)
-- Optional: Status LED
+- I²C connection between ESP and BME280
+- Power supply (USB or external)
 
-## KNX Integration
+## KNX Configuration
 
-The thermostat uses standard KNX datapoints:
-- Temperature: DPT 9.001 (2-byte float)
-- Setpoint: DPT 9.001 (2-byte float)
-- Valve Position: DPT 5.001 (1-byte percentage)
-- Operating Mode: DPT 5.xxx (1-byte unsigned value)
+This thermostat uses standard KNX datapoints:
+- **Temperature**: DPT 9.001 (2-byte float)
+- **Setpoint**: DPT 9.001 (2-byte float)
+- **Valve Position**: DPT 5.001 (1-byte percentage)
+- **Operating Mode**: DPT 5.xxx (1-byte unsigned value)
 
-## Installation
+Default group addresses:
+- **Temperature**: 3/1/0
+- **Setpoint**: 3/2/0
+- **Valve Position**: 3/3/0
+- **Mode**: 3/4/0
 
-### Using PlatformIO (Recommended)
+## Getting Started
+
+### Development Environment
 
 1. Clone this repository
-2. Open the project in PlatformIO
-3. Configure platformio.ini if needed (board type, etc.)
-4. Build and upload to your device
+2. Install PlatformIO (recommended) or configure Arduino IDE
+3. Build and upload to your device
 
-### Using Arduino IDE
+### Initial Setup
 
-1. Install all required libraries through the Arduino Library Manager
-2. Copy the files into your sketch folder
-3. Open the main sketch in Arduino IDE
-4. Select your board and upload
+1. After uploading, connect to the "KNX-Thermostat" WiFi network
+2. Configure WiFi settings in the captive portal
+3. Access web interface at http://knx-thermostat.local or device IP
+4. Configure KNX settings to match your installation
 
-## Initial Setup
+## Development Roadmap
 
-1. After uploading the code, the device will create a WiFi access point named "KNX-Thermostat"
-2. Connect to this network using your smartphone or computer
-3. Follow the captive portal instructions to connect the device to your WiFi network
-4. Once connected, access the web interface at http://knx-thermostat.local or the IP address shown in the serial monitor
-5. Configure your KNX settings according to your KNX installation
+1. **Core Integration**: Basic temperature reading and KNX communication
+2. **PID Implementation**: Valve control based on temperature difference
+3. **Web Interface Enhancement**: Complete configuration capabilities
+4. **Operating Modes**: Support for multiple operating modes
+5. **MQTT Integration**: Support for Home Assistant and other systems
 
-## Configuration Options
+## Directories Structure
 
-Through the web interface, you can configure:
+```
+ESP32-KNX-Thermostat/
+├── include/                 # Header files
+│   ├── config_manager.h     # Configuration handling
+│   ├── knx_interface.h      # KNX communication
+│   ├── mqtt_interface.h     # MQTT communication
+│   ├── pid_controller.h     # PID control algorithm
+│   ├── sensor_interface.h   # BME280 sensor handling
+│   ├── thermostat_state.h   # Central state management
+│   └── web_interface.h      # Web configuration UI
+├── src/
+│   ├── communication/       # Communication modules
+│   │   ├── knx_interface.cpp
+│   │   ├── mqtt_interface.cpp
+│   │   └── web_interface.cpp
+│   ├── config/              # Configuration handling
+│   │   └── config_manager.cpp
+│   ├── control/             # Control algorithms
+│   │   └── pid_controller.cpp
+│   ├── main.cpp             # Main application entry
+│   └── sensors/             # Sensor handling
+│       └── sensor_interface.cpp
+└── platformio.ini           # PlatformIO configuration
+```
 
-- **MQTT Settings**: Server, port, credentials
-- **KNX Settings**: Physical address and group addresses
-- **PID Controller**: Proportional, Integral, and Derivative parameters
-- **Setpoint**: Target temperature
-- **Timing**: Update intervals for sensor readings and PID calculations
+## Contribution
 
-## Library Dependencies
-
-- ArduinoJson
-- PubSubClient
-- WiFiManager
-- Adafruit BME280 Library
-- Adafruit Unified Sensor
-- ArduinoThread
-- esp-knx-ip
-
-## Development
-
-This project follows a modular architecture with the following components:
-
-- **Thermostat State**: Central state management with event callbacks
-- **Sensor Interface**: Handles reading from BME280
-- **KNX Interface**: Manages KNX communication
-- **MQTT Interface**: Handles MQTT communication
-- **Web Interface**: Provides configuration UI
-- **PID Controller**: Implements the control algorithm
+Contributions welcome! Please follow the modular architecture and maintain separation of concerns when submitting pull requests.
 
 ## License
 
