@@ -310,53 +310,49 @@ void ConfigManager::setSetpoint(float value) {
 
 // Add a basic WiFi setup implementation
 bool ConfigManager::setupWiFi() {
-    // Hardcoded credentials for debugging
-    const char* DEBUG_SSID = "coolbox_down";
-    const char* DEBUG_PASSWORD = "1313131313131";
-    
-    ESP_LOGI(TAG, "Setting up WiFi with hardcoded credentials for debugging");
-    
-    // Disconnect if already connected
-    if (WiFi.status() == WL_CONNECTED) {
-        ESP_LOGI(TAG, "WiFi already connected, disconnecting first...");
-        WiFi.disconnect(true);
-        delay(1000);
-    }
-    
-    // Set WiFi mode to station
-    WiFi.mode(WIFI_STA);
-    
-    // Connect using hardcoded credentials
-    WiFi.begin(DEBUG_SSID, DEBUG_PASSWORD);
-    
-    // Wait for connection with timeout
-    int attempts = 0;
-    const int MAX_ATTEMPTS = 20;
-    
-    ESP_LOGI(TAG, "Attempting to connect to WiFi network: %s", DEBUG_SSID);
-    
-    while (attempts < MAX_ATTEMPTS) {
-        if (WiFi.status() == WL_CONNECTED) {
-            ESP_LOGI(TAG, "Successfully connected to WiFi! IP: %s", WiFi.localIP().toString().c_str());
-            return true;
-        }
+    // Load credentials from storage
+    if (strlen(wifiSSID) > 0 && strlen(wifiPassword) > 0) {
+        // Try connecting with stored credentials
+        WiFi.mode(WIFI_STA);
+        WiFi.begin(wifiSSID, wifiPassword);
         
-        delay(500);
-        attempts++;
-        
-        // Only log every second attempt to reduce spam
-        if (attempts % 2 == 0) {
-            ESP_LOGI(TAG, "Still trying to connect... attempt %d/%d", attempts, MAX_ATTEMPTS);
+        // Wait for connection with timeout
+        for (int attempts = 0; attempts < 20; attempts++) {
+            if (WiFi.status() == WL_CONNECTED) {
+                ESP_LOGI(TAG, "Connected to WiFi: %s", wifiSSID);
+                return true;
+            }
+            delay(500);
         }
     }
     
-    ESP_LOGE(TAG, "Failed to connect to WiFi after %d attempts", MAX_ATTEMPTS);
+    // If we reach here, either no credentials or connection failed
+    ESP_LOGI(TAG, "Starting WiFi setup portal");
+    
+    // Create AP for configuration
+    DNSServer dns;
+    AsyncWebServer server(80);
+    AsyncWiFiManager wifiManager(&server, &dns);
+    
+    // Start portal and wait for configuration
+    if (wifiManager.startConfigPortal("ESP32-Thermostat")) {
+        // Successfully configured
+        String newSSID = WiFi.SSID();
+        String newPass = WiFi.psk();
+        
+        // Store new credentials
+        strncpy(wifiSSID, newSSID.c_str(), sizeof(wifiSSID) - 1);
+        wifiSSID[sizeof(wifiSSID) - 1] = '\0';
+        
+        strncpy(wifiPassword, newPass.c_str(), sizeof(wifiPassword) - 1);
+        wifiPassword[sizeof(wifiPassword) - 1] = '\0';
+        
+        // Save to persistent storage
+        saveConfig();
+        return true;
+    }
+    
     return false;
-}
-
-void ConfigManager::setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member) {
-    knxTemperatureGA = {area, line, member};
-    ESP_LOGI(TAG, "KNX temperature GA set to: %d/%d/%d", area, line, member);
 }
 
 void ConfigManager::getKnxTemperatureGA(uint8_t& area, uint8_t& line, uint8_t& member) const {
@@ -396,4 +392,10 @@ void ConfigManager::getKnxModeGA(uint8_t& area, uint8_t& line, uint8_t& member) 
     area = knxModeGA.area;
     line = knxModeGA.line;
     member = knxModeGA.member;
+}
+
+void ConfigManager::setKnxTemperatureGA(uint8_t area, uint8_t line, uint8_t member) {
+    knxTemperatureGA.area = area;
+    knxTemperatureGA.line = line;
+    knxTemperatureGA.member = member;
 }

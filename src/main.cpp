@@ -116,10 +116,8 @@ void setup() {
     }
 
     // Initialize web server
-    if (!webInterface.begin()) {
-        Serial.println("Failed to start web interface");
-        return;
-    }
+    webInterface.begin();
+
 
     ESP_LOGI(TAG, "ESP32 KNX Thermostat initialized successfully");
 }

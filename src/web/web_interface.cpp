@@ -9,12 +9,14 @@
 static const char* TAG = "WebInterface";
 
 void WebInterface::listFiles() {
-    ESP_LOGI(TAG, "Listing files in LittleFS:");
+    Serial.println("Listing files in LittleFS:");
     File root = LittleFS.open("/");
     File file = root.openNextFile();
-    while(file) {
-        ESP_LOGI(TAG, "File: %s, Size: %d bytes", file.name(), file.size());
+    
+    while (file) {
+        if (!file.isDirectory()) {
+            Serial.printf("File: %s, Size: %d bytes\n", file.name(), file.size());
+        }
         file = root.openNextFile();
     }
-    root.close();
-} 
+}
