@@ -33,6 +33,7 @@ public:
     void handleReboot(AsyncWebServerRequest* request);
     void handleFactoryReset(AsyncWebServerRequest* request);
     void handleNotFound(AsyncWebServerRequest* request);
+    void handleMode(AsyncWebServerRequest* request);
     
     // Utility methods
     bool handleFileRead(AsyncWebServerRequest* request, String path);

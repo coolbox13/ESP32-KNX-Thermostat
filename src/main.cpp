@@ -15,7 +15,7 @@
 #include "communication/mqtt/mqtt_interface.h"
 #include "communication/knx/knx_interface.h"
 #include "sensors/bme280_sensor_interface.h"
-#include "pid_controller.h"
+#include "control/pid_controller.h"
 #include "web/web_interface.h"
 
 static const char* TAG = "Main";
@@ -25,7 +25,7 @@ ConfigManager configManager;
 ThermostatState thermostatState;
 ProtocolManager protocolManager(&thermostatState);
 BME280SensorInterface sensorInterface;
-PIDController pidController;
+PIDController pidController(&thermostatState);
 WebInterface webInterface(&configManager, &sensorInterface, &pidController, &thermostatState, &protocolManager);
 KNXInterface knxInterface(&thermostatState);
 MQTTInterface mqttInterface(&thermostatState);

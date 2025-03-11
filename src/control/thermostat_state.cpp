@@ -16,7 +16,8 @@ ThermostatState::ThermostatState() :
   valvePositionCallback(nullptr),
   modeCallback(nullptr),
   heatingCallback(nullptr),
-  statusCallback(nullptr) {
+  statusCallback(nullptr),
+  enabled(false) {
 }
 
 void ThermostatState::setTemperature(float value) {
@@ -95,4 +96,12 @@ bool ThermostatState::isValidPressure(float value) const {
 
 bool ThermostatState::isValidValvePosition(float value) const {
   return value >= 0.0f && value <= 100.0f;
+}
+
+void ThermostatState::setEnabled(bool state) {
+    if (enabled != state) {
+        enabled = state;
+        ESP_LOGI("ThermostatState", "Thermostat %s", state ? "enabled" : "disabled");
+        // If you have state change callbacks, trigger them here
+    }
 } 

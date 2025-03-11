@@ -2,6 +2,7 @@
 
 #include "interfaces/control_interface.h"
 #include "thermostat_types.h"
+#include "thermostat_state.h"
 
 // PID configuration structure
 struct PIDConfig {
@@ -15,7 +16,7 @@ struct PIDConfig {
 
 class PIDController : public ControlInterface {
 public:
-    PIDController();
+    PIDController(ThermostatState* state);
     
     // ControlInterface methods
     bool begin() override;
@@ -44,10 +45,7 @@ public:
     float getSampleTime() const { return config.sampleTime; }
     
     // Update method that combines setInput and loop
-    void update(float newInput) {
-        setInput(newInput);
-        loop();
-    }
+    void update(float newInput);
 
 protected:
     // Helper methods
@@ -66,4 +64,5 @@ private:
     bool active;
     ThermostatStatus lastError;
     char lastErrorMessage[128];
+    ThermostatState* thermostatState;  // Added thermostat state pointer
 };

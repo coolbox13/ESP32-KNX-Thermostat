@@ -1,48 +1,50 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <LittleFS.h>
-#include <esp_log.h>
+#include "esp_log.h"
 
 #include "thermostat_state.h"
-#include "pid_controller.h"
+#include "control/pid_controller.h"
 
 static const char* TAG = "PIDController";
 
-PIDController::PIDController() : active(false), lastTime(0), lastError(ThermostatStatus::OK) {
+PIDController::PIDController(ThermostatState* state)
+    : setpoint(21.0f)  // Default room temperature
+    , input(0.0f)
+    , output(0.0f)
+    , integral(0.0f)
+    , lastInput(0.0f)
+    , lastTime(0)
+    , active(false)
+    , lastError(ThermostatStatus::OK)
+    , thermostatState(state) {
+    
+    // Default PID configuration
     config.kp = 2.0f;
     config.ki = 0.5f;
     config.kd = 1.0f;
     config.minOutput = 0.0f;
     config.maxOutput = 100.0f;
-    config.sampleTime = 30000.0f; // 30 seconds
-    setpoint = 0.0f;
-    input = 0.0f;
-    output = 0.0f;
-    integral = 0.0f;
-    lastInput = 0.0f;
+    config.sampleTime = 30000.0f;  // 30 seconds default
+    
     memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
 }
 
 bool PIDController::begin() {
-    lastTime = millis();
-    integral = 0.0f;
-    lastInput = input;
-    active = true;
-    clearError();
+    ESP_LOGI(TAG, "Initializing PID controller");
+    reset();
     return true;
 }
 
 void PIDController::loop() {
-    if (!active) return;
+    if (!active || !thermostatState->isEnabled()) {
+        output = 0;
+        return;
+    }
     
     unsigned long now = millis();
-    unsigned long timeChange = (now - lastTime);
-    
-    if (timeChange >= config.sampleTime) {
-        // Compute PID output
+    if (now - lastTime >= static_cast<unsigned long>(config.sampleTime)) {
         output = computePID();
-        
-        // Remember for next time
         lastTime = now;
     }
 }
@@ -107,33 +109,20 @@ bool PIDController::saveConfig() {
 }
 
 float PIDController::computePID() {
-    // Calculate error
     float error = setpoint - input;
-    
-    // Calculate the proportional term
-    float pTerm = config.kp * error;
-    
-    // Calculate the integral term
-    integral += (config.ki * error);
-    
-    // Limit integral to prevent windup
-    if (integral > config.maxOutput) integral = config.maxOutput;
-    else if (integral < config.minOutput) integral = config.minOutput;
-    
-    // Calculate the derivative term
     float dInput = input - lastInput;
-    float dTerm = -config.kd * dInput; // Negative because dInput = input - lastInput
     
-    // Remember last input for next time
+    integral += (config.ki * error);
+    integral = clamp(integral, config.minOutput, config.maxOutput);
+    
+    float P = config.kp * error;
+    float I = integral;
+    float D = -config.kd * dInput;  // Negative because dInput is backwards
+    
+    float result = P + I + D;
+    result = clamp(result, config.minOutput, config.maxOutput);
+    
     lastInput = input;
-    
-    // Calculate total output
-    float result = pTerm + integral + dTerm;
-    
-    // Limit output
-    if (result > config.maxOutput) result = config.maxOutput;
-    else if (result < config.minOutput) result = config.minOutput;
-    
     return result;
 }
 
@@ -146,5 +135,15 @@ float PIDController::clamp(float value, float min, float max) const {
     if (value < min) return min;
     if (value > max) return max;
     return value;
+}
+
+void PIDController::update(float currentTemperature) {
+    if (!thermostatState->isEnabled()) {
+        output = 0;  // Turn off control when disabled
+        return;
+    }
+    
+    setInput(currentTemperature);
+    loop();
 }
 

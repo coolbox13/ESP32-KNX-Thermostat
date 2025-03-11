@@ -8,7 +8,7 @@
 #include <WiFi.h>
 #include <DNSServer.h>
 #include "thermostat_types.h"
-#include "pid_controller.h"
+#include "control/pid_controller.h"
 #include "interfaces/config_interface.h"
 
 // Forward declarations

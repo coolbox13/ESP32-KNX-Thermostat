@@ -167,7 +167,7 @@ void WebInterface::handleGetStatus(AsyncWebServerRequest *request) {
     doc["humidity"] = thermostatState->getCurrentHumidity();
     doc["pressure"] = thermostatState->getCurrentPressure();
     doc["setpoint"] = thermostatState->getTargetTemperature();
-    doc["mode"] = thermostatState->getMode();
+    doc["enabled"] = thermostatState->isEnabled();
     doc["error"] = thermostatState->getStatus();
 
     String response;
@@ -284,6 +284,39 @@ void WebInterface::handleFactoryReset(AsyncWebServerRequest *request) {
 
     delay(5000);
     ESP.restart();
+}
+
+void WebInterface::handleMode(AsyncWebServerRequest* request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
+        return;
+    }
+
+    if (!validateCSRFToken(request)) {
+        ESP_LOGW(TAG, "Invalid CSRF token from IP: %s", request->client()->remoteIP().toString().c_str());
+        request->send(403, "text/plain", "Invalid CSRF token");
+        return;
+    }
+
+    if (!request->hasParam("mode", true)) {
+        ESP_LOGW(TAG, "Missing mode parameter from IP: %s", request->client()->remoteIP().toString().c_str());
+        request->send(400, "text/plain", "Missing mode parameter");
+        return;
+    }
+
+    String mode = request->getParam("mode", true)->value();
+    if (mode == "on") {
+        thermostatState->setEnabled(true);
+    } else if (mode == "off") {
+        thermostatState->setEnabled(false);
+    } else {
+        ESP_LOGW(TAG, "Invalid mode value: %s from IP: %s", mode.c_str(), request->client()->remoteIP().toString().c_str());
+        request->send(400, "text/plain", "Invalid mode value");
+        return;
+    }
+
+    ESP_LOGI(TAG, "Mode updated to: %s", mode.c_str());
+    request->send(200, "text/plain", "Mode updated");
 }
 
 void WebInterface::handleNotFound(AsyncWebServerRequest *request) {

@@ -7,6 +7,8 @@
 #include <esp_log.h>
 #include <map>
 #include <string>
+#include <WiFiUdp.h>
+#include <esp_wifi.h>
 
 static const char* TAG = "KNXInterface";
 
@@ -17,6 +19,9 @@ public:
         memset(lastErrorMessage, 0, sizeof(lastErrorMessage));
     }
     
+    WiFiUDP udp;
+
+    // KNX interface initialization
     bool begin() {
         if (!enabled) {
             snprintf(lastErrorMessage, sizeof(lastErrorMessage), "KNX interface not enabled");
@@ -24,7 +29,29 @@ public:
             return false;
         }
         
-        knx.start(nullptr);  // We don't need web server integration
+        // Configure multicast
+        IPAddress multicastIP(224, 0, 23, 12); // KNX multicast address
+        uint16_t knxPort = 3671; // Standard KNX port
+        
+        // Check WiFi
+        if (!WiFi.isConnected()) {
+            ESP_LOGE(TAG, "WiFi not connected, can't initialize KNX");
+            lastError = ThermostatStatus::ERROR_COMMUNICATION;
+            return false;
+        }
+        
+        ESP_LOGI(TAG, "Setting up KNX with multicast IP %s on port %d", 
+                multicastIP.toString().c_str(), knxPort);
+        
+        // Use the correct method signature
+        if (this->udp.beginMulticast(multicastIP, knxPort) != 1) {
+            ESP_LOGE(TAG, "Failed to begin multicast");
+            lastError = ThermostatStatus::ERROR_COMMUNICATION;
+            return false;
+        }
+        
+        knx.start(nullptr);
+        ESP_LOGI(TAG, "KNX interface started successfully");
         return true;
     }
     

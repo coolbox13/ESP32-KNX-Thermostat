@@ -36,6 +36,7 @@ bool WebInterface::begin() {
         server.on("/save", HTTP_POST, std::bind(&WebInterface::handleSave, this, std::placeholders::_1));
         server.on("/status", HTTP_GET, std::bind(&WebInterface::handleGetStatus, this, std::placeholders::_1));
         server.on("/setpoint", HTTP_POST, std::bind(&WebInterface::handleSetpoint, this, std::placeholders::_1));
+        server.on("/mode", HTTP_POST, std::bind(&WebInterface::handleMode, this, std::placeholders::_1));
         server.on("/config", HTTP_POST, std::bind(&WebInterface::handleSaveConfig, this, std::placeholders::_1));
         server.on("/reboot", HTTP_POST, std::bind(&WebInterface::handleReboot, this, std::placeholders::_1));
         server.on("/factory_reset", HTTP_POST, std::bind(&WebInterface::handleFactoryReset, this, std::placeholders::_1));
@@ -66,6 +67,33 @@ void WebInterface::end() {
 
 void WebInterface::loop() {
     // AsyncWebServer doesn't need explicit loop handling
+}
+
+void WebInterface::listFiles() {
+    ESP_LOGI(TAG, "Listing files in LittleFS:");
+    File root = LittleFS.open("/");
+    File file = root.openNextFile();
+    while(file) {
+        ESP_LOGI(TAG, "File: %s, Size: %d bytes", file.name(), file.size());
+        file = root.openNextFile();
+    }
+    root.close();
+}
+
+String WebInterface::generateHtml() {
+    File file = LittleFS.open("/index.html", "r");
+    if (!file) {
+        ESP_LOGE(TAG, "Failed to open index.html");
+        return "Error: Failed to load web interface";
+    }
+    String html = file.readString();
+    
+    // Add CSRF token to the HTML
+    String csrfToken = generateCSRFToken(nullptr);
+    html.replace("{{CSRF_TOKEN}}", csrfToken);
+    
+    file.close();
+    return html;
 }
 
 void WebInterface::setupMDNS() {

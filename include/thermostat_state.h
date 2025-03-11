@@ -19,6 +19,7 @@ public:
   ThermostatMode getMode() const { return operatingMode; }
   bool isHeating() const { return heatingActive; }
   ThermostatStatus getStatus() const { return status; }
+  bool isEnabled() const { return enabled; }
   
   // Setters
   void setTemperature(float value);
@@ -29,6 +30,7 @@ public:
   void setMode(ThermostatMode mode);
   void setHeating(bool active) { heatingActive = active; }
   void setStatus(ThermostatStatus newStatus) { status = newStatus; }
+  void setEnabled(bool state);
   
   // Alias methods for clarity
   void setCurrentTemperature(float value) { setTemperature(value); }
@@ -65,6 +67,7 @@ private:
   ThermostatMode operatingMode;
   bool heatingActive;
   ThermostatStatus status;
+  bool enabled;  // New member for ON/OFF state
   
   // Validation helpers
   bool isValidTemperature(float value) const;
