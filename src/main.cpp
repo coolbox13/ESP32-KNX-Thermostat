@@ -16,7 +16,7 @@
 #include "communication/knx/knx_interface.h"
 #include "sensors/bme280_sensor_interface.h"
 #include "control/pid_controller.h"
-#include "web/web_interface.h"
+#include "web_interface.h"
 
 static const char* TAG = "Main";
 

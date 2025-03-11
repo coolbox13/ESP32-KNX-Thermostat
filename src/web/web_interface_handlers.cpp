@@ -1,4 +1,4 @@
-#include "web/web_interface.h"
+#include "web_interface.h"
 #include "config_manager.h"
 #include "sensor_interface.h"
 #include "thermostat_state.h"
