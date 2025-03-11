@@ -155,36 +155,91 @@ void MQTTInterface::disconnect() {
 
 bool MQTTInterface::reconnect() {
     if (!pimpl->enabled) {
+        ESP_LOGI(TAG, "MQTT disabled, not attempting reconnection");
         return false;
     }
     
-    // Try to connect
+    if (WiFi.status() != WL_CONNECTED) {
+        pimpl->lastError = ThermostatStatus::ERROR_COMMUNICATION;
+        snprintf(pimpl->lastErrorMessage, sizeof(pimpl->lastErrorMessage), 
+                 "Cannot connect to MQTT: WiFi not connected");
+        ESP_LOGW(TAG, "%s", pimpl->lastErrorMessage);
+        return false;
+    }
+    
+    ESP_LOGI(TAG, "Attempting MQTT connection to %s:%d...", pimpl->server, pimpl->port);
+    
+    // Set connection timeout
+    pimpl->client.setSocketTimeout(10); // 10 seconds timeout
+    
+    // Try to connect with username/password or just client ID
     bool result = false;
-    if (strlen(pimpl->username) > 0) {
-        result = pimpl->client.connect(pimpl->clientId, pimpl->username, pimpl->password);
-    } else {
-        result = pimpl->client.connect(pimpl->clientId);
+    int attempts = 0;
+    const int maxAttempts = 3;
+    
+    while (!result && attempts < maxAttempts) {
+        attempts++;
+        
+        if (strlen(pimpl->username) > 0) {
+            result = pimpl->client.connect(pimpl->clientId, pimpl->username, pimpl->password);
+        } else {
+            result = pimpl->client.connect(pimpl->clientId);
+        }
+        
+        if (!result && attempts < maxAttempts) {
+            ESP_LOGW(TAG, "Connection attempt %d failed, retrying...", attempts);
+            delay(1000); // Brief delay between attempts
+        }
     }
     
     if (result) {
         ESP_LOGI(TAG, "Connected to MQTT broker");
         pimpl->connected = true;
         
-        // Subscribe to topics
+        // Subscribe to topics with error handling
         String setpointTopicFull = String(pimpl->topicPrefix) + pimpl->setpointTopic + "/set";
         String modeTopicFull = String(pimpl->topicPrefix) + pimpl->modeTopic + "/set";
         
-        pimpl->client.subscribe(setpointTopicFull.c_str());
-        pimpl->client.subscribe(modeTopicFull.c_str());
+        if (!pimpl->client.subscribe(setpointTopicFull.c_str())) {
+            ESP_LOGW(TAG, "Failed to subscribe to %s", setpointTopicFull.c_str());
+        }
+        
+        if (!pimpl->client.subscribe(modeTopicFull.c_str())) {
+            ESP_LOGW(TAG, "Failed to subscribe to %s", modeTopicFull.c_str());
+        }
         
         // Publish initial status
-        publish(pimpl->statusTopic, "online", true);
+        if (!publish(pimpl->statusTopic, "online", true)) {
+            ESP_LOGW(TAG, "Failed to publish initial status");
+        }
         
+        pimpl->lastError = ThermostatStatus::OK;
+        memset(pimpl->lastErrorMessage, 0, sizeof(pimpl->lastErrorMessage));
         return true;
     } else {
-        ESP_LOGE(TAG, "Failed to connect to MQTT broker, rc=%d", pimpl->client.state());
+        int state = pimpl->client.state();
         pimpl->connected = false;
         pimpl->lastError = ThermostatStatus::ERROR_COMMUNICATION;
+        
+        // Provide detailed error message based on state code
+        const char* errorMessage;
+        switch (state) {
+            case -4: errorMessage = "Connection timeout"; break;
+            case -3: errorMessage = "Connection lost"; break;
+            case -2: errorMessage = "Connection failed"; break;
+            case -1: errorMessage = "Disconnected"; break;
+            case 1: errorMessage = "Bad protocol"; break;
+            case 2: errorMessage = "Bad client ID"; break;
+            case 3: errorMessage = "Server unavailable"; break;
+            case 4: errorMessage = "Bad credentials"; break;
+            case 5: errorMessage = "Unauthorized"; break;
+            default: errorMessage = "Unknown error"; break;
+        }
+        
+        snprintf(pimpl->lastErrorMessage, sizeof(pimpl->lastErrorMessage),
+                "MQTT connection failed: %s (code %d)", errorMessage, state);
+        ESP_LOGE(TAG, "%s", pimpl->lastErrorMessage);
+        
         return false;
     }
 }
