@@ -6,7 +6,7 @@
 #include "communication/knx/knx_interface.h"
 #include "communication/mqtt/mqtt_interface.h"
 #include "protocol_types.h"
-
+#include <mutex>
 // Forward declarations
 class KNXInterface;
 class MQTTInterface;
@@ -52,4 +52,7 @@ private:
 
     // Helper methods
     bool hasHigherPriority(CommandSource newSource, CommandSource currentSource);
+
+    // avoid race conditions
+    std::mutex commandMutex;
 };

@@ -61,6 +61,9 @@ void ProtocolManager::removeProtocol(ProtocolInterface* protocol) {
 }
 
 bool ProtocolManager::handleIncomingCommand(CommandSource source, CommandType cmd, float value) {
+    // Lock the mutex during command processing
+    std::lock_guard<std::mutex> lock(commandMutex);
+    
     // Check if the new command has higher priority
     if (!hasHigherPriority(source, lastCommandSource)) {
         return false;
@@ -68,16 +71,17 @@ bool ProtocolManager::handleIncomingCommand(CommandSource source, CommandType cm
 
     // Update state based on command type
     bool success = true;
-    switch (cmd) {
-        case CommandType::CMD_SETPOINT:
-            if (thermostatState) {
-                thermostatState->setTargetTemperature(value);
-                lastCommandSource = source;
-                lastCommandType = cmd;
-                lastCommandValue = value;
-                propagateCommand(source, cmd, value);
-            }
-            break;
+        switch (cmd) {
+            case CommandType::CMD_SETPOINT:
+                if (thermostatState) {
+                    thermostatState->setTargetTemperature(value);
+                    lastCommandSource = source;
+                    lastCommandType = cmd;
+                    lastCommandValue = value;
+                    // Only propagate after state changes are complete
+                    propagateCommand(source, cmd, value);
+                }
+                break;
 
         case CommandType::CMD_MODE:
             if (thermostatState) {
