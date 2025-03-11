@@ -227,9 +227,13 @@ void WebAuthManager::addSecurityHeaders(AsyncWebServerResponse *response) {
 
 void WebAuthManager::cleanupSessions() {
     unsigned long now = millis();
-    for (auto it = sessions.begin(); it != sessions.end();) {
+    auto it = sessions.begin();
+    
+    // Use safe iterator-based removal
+    while (it != sessions.end()) {
         if (now - it->second.created > SESSION_TIMEOUT) {
-            it = sessions.erase(it);
+            ESP_LOGD(TAG, "Removing expired session: %s", it->first.c_str());
+            it = sessions.erase(it); // erase() returns the next iterator
         } else {
             ++it;
         }
