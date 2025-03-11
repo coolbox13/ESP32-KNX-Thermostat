@@ -43,8 +43,15 @@ WebAuthManager::WebAuthManager(AsyncWebServer& server, ConfigManager& configMana
 }
 
 void WebAuthManager::setCredentials(const char* user, const char* pass) {
+    // Safely copy username with null termination
     strncpy(username, user, sizeof(username) - 1);
+    username[sizeof(username) - 1] = '\0';
+    
+    // Safely copy password with null termination
     strncpy(password, pass, sizeof(password) - 1);
+    password[sizeof(password) - 1] = '\0';
+    
+    ESP_LOGI("WebAuthManager", "Credentials updated for user: %s", username);
 }
 
 bool WebAuthManager::authenticate(AsyncWebServerRequest* request) {
