@@ -261,13 +261,13 @@ void WebInterface::handleSaveConfig(AsyncWebServerRequest *request) {
 
     if (!validateCSRFToken(request)) {
         ESP_LOGW(TAG, "Invalid CSRF token from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(403, "text/plain", "Invalid CSRF token");
+        request->send(403, "application/json", "{\"status\":\"error\",\"message\":\"Invalid CSRF token\"}");
         return;
     }
 
     if (!request->hasParam("plain", true)) {
         ESP_LOGW(TAG, "Missing configuration data from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(400, "text/plain", "Missing configuration data");
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing configuration data\"}");
         return;
     }
 
@@ -277,7 +277,7 @@ void WebInterface::handleSaveConfig(AsyncWebServerRequest *request) {
 
     if (error) {
         ESP_LOGW(TAG, "Invalid JSON from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(400, "text/plain", "Invalid JSON");
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid JSON\"}");
         return;
     }
 
@@ -291,7 +291,8 @@ void WebInterface::handleSaveConfig(AsyncWebServerRequest *request) {
     configManager->saveConfig();
     ESP_LOGI(TAG, "Configuration saved successfully");
 
-    request->send(200, "text/plain", "Configuration saved");
+    // Return a JSON response instead of plain text
+    request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Configuration saved\"}");
 }
 
 void WebInterface::handleReboot(AsyncWebServerRequest *request) {

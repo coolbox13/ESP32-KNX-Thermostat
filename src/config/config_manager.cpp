@@ -192,7 +192,7 @@ void ConfigManager::resetToDefaults() {
     
     // Reset KNX settings
     knxEnabled = false;
-    knxPhysicalAddress = {1, 1, 1};
+    knxPhysicalAddress = {1, 1, 160};
     
     // Reset MQTT settings
     mqttEnabled = false;
