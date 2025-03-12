@@ -166,9 +166,9 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
         }
     }
     
-    // Save configuration to file
-    configManager->saveConfig();
-    ESP_LOGI(TAG, "Configuration saved successfully");
+    ESP_LOGI(TAG, "Calling configManager->saveConfig()");
+    bool saveResult = configManager->saveConfig();
+    ESP_LOGI(TAG, "configManager->saveConfig() returned: %s", saveResult ? "true" : "false");
     
     // Return a JSON response
     request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Configuration saved\"}");

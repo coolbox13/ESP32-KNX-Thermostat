@@ -64,6 +64,9 @@ void setup() {
         return;
     }
 
+    // Test saveConfig()
+    testSaveConfig();
+
     // Initialize sensor - try once at startup
     if (!sensorInterface.begin()) {
         Serial.println("BME280 sensor not available - continuing with other functionality");
@@ -161,4 +164,13 @@ void loop() {
 
     // Small delay to prevent tight looping
     delay(10);
+}
+
+void testSaveConfig() {
+    ConfigManager configManager;
+    if (configManager.saveConfig()) {
+        ESP_LOGI(TAG, "Test saveConfig() succeeded");
+    } else {
+        ESP_LOGE(TAG, "Test saveConfig() failed");
+    }
 }

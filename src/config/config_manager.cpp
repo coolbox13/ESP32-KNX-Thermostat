@@ -132,7 +132,9 @@ bool ConfigManager::loadConfig() {
     return true;
 }
 
-void ConfigManager::saveConfig() {
+bool ConfigManager::saveConfig() {
+    ESP_LOGI(TAG, "Attempting to save configuration...");
+    
     StaticJsonDocument<1024> doc;
 
     // Save device settings
@@ -170,16 +172,28 @@ void ConfigManager::saveConfig() {
     pid["maxOutput"] = pidConfig.maxOutput;
     pid["sampleTime"] = pidConfig.sampleTime;
 
-    File file = LittleFS.open("/config.json", "w");
-    if (!file) {
+    File configFile = LittleFS.open("/config.json", "w");
+    if (!configFile) {
         ESP_LOGE(TAG, "Failed to open config file for writing");
-        return;
+        return false;
     }
 
-    if (serializeJson(doc, file) == 0) {
+    if (serializeJson(doc, configFile) == 0) {
         ESP_LOGE(TAG, "Failed to write config file");
+        configFile.close();
+        return false;
     }
-    file.close();
+    
+    configFile.close();
+    ESP_LOGI(TAG, "Configuration saved successfully");
+    
+    // Verify the file exists
+    if (!LittleFS.exists("/config.json")) {
+        ESP_LOGE(TAG, "Config file does not exist after saving");
+        return false;
+    }
+    
+    return true;
 }
 
 void ConfigManager::resetToDefaults() {
