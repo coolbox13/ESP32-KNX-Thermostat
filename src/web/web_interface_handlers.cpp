@@ -230,6 +230,7 @@ void WebInterface::handleSetpoint(AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "Setpoint updated");
 }
 
+// In web_interface_handlers.cpp, around line 250 (after handleMode)
 void WebInterface::handlePID(AsyncWebServerRequest* request) {
     if (!isAuthenticated(request)) {
         requestAuthentication(request);
@@ -261,28 +262,42 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
     
     bool updated = false;
     
-    if (doc.containsKey("kp") && pidController) {
-        float kp = doc["kp"].as<float>();
-        pidController->setKp(kp);
+    // Get current PID configuration
+    PIDConfig config = {
+        .kp = pidController->getKp(),
+        .ki = pidController->getKi(),
+        .kd = pidController->getKd(),
+        .minOutput = pidController->getMinOutput(),
+        .maxOutput = pidController->getMaxOutput(),
+        .sampleTime = pidController->getSampleTime()
+    };
+    
+    // Update individual parameters
+    if (doc.containsKey("kp")) {
+        config.kp = doc["kp"].as<float>();
         updated = true;
-        ESP_LOGI(TAG, "PID Kp updated to: %.2f", kp);
+        ESP_LOGI(TAG, "PID Kp updated to: %.2f", config.kp);
     }
     
-    if (doc.containsKey("ki") && pidController) {
-        float ki = doc["ki"].as<float>();
-        pidController->setKi(ki);
+    if (doc.containsKey("ki")) {
+        config.ki = doc["ki"].as<float>();
         updated = true;
-        ESP_LOGI(TAG, "PID Ki updated to: %.2f", ki);
+        ESP_LOGI(TAG, "PID Ki updated to: %.2f", config.ki);
     }
     
-    if (doc.containsKey("kd") && pidController) {
-        float kd = doc["kd"].as<float>();
-        pidController->setKd(kd);
+    if (doc.containsKey("kd")) {
+        config.kd = doc["kd"].as<float>();
         updated = true;
-        ESP_LOGI(TAG, "PID Kd updated to: %.2f", kd);
+        ESP_LOGI(TAG, "PID Kd updated to: %.2f", config.kd);
     }
     
-    if (doc.containsKey("active") && pidController) {
+    // Apply the configuration
+    if (updated) {
+        pidController->configure(&config);
+    }
+    
+    // Set active state separately
+    if (doc.containsKey("active")) {
         bool active = doc["active"].as<bool>();
         pidController->setActive(active);
         updated = true;
