@@ -11,19 +11,20 @@ public:
     static String generatePage(
         ThermostatState* state,
         ConfigInterface* config,
-        ControlInterface* control = nullptr
+        ControlInterface* control = nullptr,
+        const String& csrfToken = ""
     );
 
 private:
-    static String generateHeader();
+    static String generateHeader(const String& csrfToken = "");
     static String generateNavigation();
     static String generateStatusSection(ThermostatState* state);
-    static String generateControlSection(ThermostatState* state);
-    static String generateConfigSection(ConfigInterface* config);
-    static String generatePIDSection(ControlInterface* control);
+    static String generateControlSection(ThermostatState* state, const String& csrfToken = "");
+    static String generateConfigSection(ConfigInterface* config, const String& csrfToken = "");
+    static String generatePIDSection(ControlInterface* control, const String& csrfToken = "");
     static String generateFooter();
     static String generateStyles();
     static String generateScripts();
 };
 
-#endif // HTML_GENERATOR_H 
+#endif // HTML_GENERATOR_H

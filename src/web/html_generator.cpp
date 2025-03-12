@@ -3,28 +3,31 @@
 String HtmlGenerator::generatePage(
     ThermostatState* state,
     ConfigInterface* config,
-    ControlInterface* control) {
-    String html = generateHeader();
+    ControlInterface* control,
+    const String& csrfToken) {
+    
+    String html = generateHeader(csrfToken);
     html += generateNavigation();
     html += "<div class='container'>";
     html += generateStatusSection(state);
-    html += generateControlSection(state);
-    html += generateConfigSection(config);
+    html += generateControlSection(state, csrfToken);
+    html += generateConfigSection(config, csrfToken);
     if (control) {
-        html += generatePIDSection(control);
+        html += generatePIDSection(control, csrfToken);
     }
     html += "</div>";
     html += generateFooter();
     return html;
 }
 
-String HtmlGenerator::generateHeader() {
+String HtmlGenerator::generateHeader(const String& csrfToken) {
     return R"(
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
+    <meta name="csrf-token" content=")" + csrfToken + R"(">
     <title>ESP32 KNX Thermostat</title>
     <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'>
 )" + generateStyles() + R"(
@@ -71,7 +74,7 @@ String HtmlGenerator::generateStatusSection(ThermostatState* state) {
             <div class='card'>
                 <div class='card-body'>
                     <h5 class='card-title'>Temperature</h5>
-                    <p class='card-text'>%.1f°C</p>
+                    <p class='card-text temperature'>%.1f°C</p>
                 </div>
             </div>
         </div>
@@ -79,7 +82,7 @@ String HtmlGenerator::generateStatusSection(ThermostatState* state) {
             <div class='card'>
                 <div class='card-body'>
                     <h5 class='card-title'>Humidity</h5>
-                    <p class='card-text'>%.1f%%</p>
+                    <p class='card-text humidity'>%.1f%%</p>
                 </div>
             </div>
         </div>
@@ -87,7 +90,7 @@ String HtmlGenerator::generateStatusSection(ThermostatState* state) {
             <div class='card'>
                 <div class='card-body'>
                     <h5 class='card-title'>Pressure</h5>
-                    <p class='card-text'>%.1f hPa</p>
+                    <p class='card-text pressure'>%.1f hPa</p>
                 </div>
             </div>
         </div>
@@ -101,7 +104,7 @@ String HtmlGenerator::generateStatusSection(ThermostatState* state) {
     return String(buf);
 }
 
-String HtmlGenerator::generateControlSection(ThermostatState* state) {
+String HtmlGenerator::generateControlSection(ThermostatState* state, const String& csrfToken) {
     if (!state) return "";
 
     char buf[512];
@@ -110,28 +113,32 @@ String HtmlGenerator::generateControlSection(ThermostatState* state) {
     <h2>Control</h2>
     <div class='card'>
         <div class='card-body'>
-            <div class='row'>
-                <div class='col-md-6'>
-                    <label class='form-label'>Mode</label>
-                    <select class='form-select' id='mode'>
-                        <option value='off' %s>Off</option>
-                        <option value='comfort' %s>Comfort</option>
-                        <option value='eco' %s>Eco</option>
-                        <option value='away' %s>Away</option>
-                        <option value='boost' %s>Boost</option>
-                        <option value='antifreeze' %s>Anti-freeze</option>
-                    </select>
+            <form id="controlForm">
+                <input type="hidden" name="_csrf" value="%s">
+                <div class='row'>
+                    <div class='col-md-6'>
+                        <label class='form-label'>Mode</label>
+                        <select class='form-select' id='mode'>
+                            <option value='off' %s>Off</option>
+                            <option value='comfort' %s>Comfort</option>
+                            <option value='eco' %s>Eco</option>
+                            <option value='away' %s>Away</option>
+                            <option value='boost' %s>Boost</option>
+                            <option value='antifreeze' %s>Anti-freeze</option>
+                        </select>
+                    </div>
+                    <div class='col-md-6'>
+                        <label class='form-label'>Target Temperature</label>
+                        <input type='number' class='form-control' id='setpoint' value='%.1f' step='0.5'>
+                    </div>
                 </div>
-                <div class='col-md-6'>
-                    <label class='form-label'>Target Temperature</label>
-                    <input type='number' class='form-control' id='setpoint' value='%.1f' step='0.5'>
-                </div>
-            </div>
-            <button class='btn btn-primary mt-3' onclick='updateControl()'>Update</button>
+                <button class='btn btn-primary mt-3' onclick='updateControl(); return false;'>Update</button>
+            </form>
         </div>
     </div>
 </div>
 )",
+        csrfToken.c_str(),
         state->getMode() == ThermostatMode::OFF ? "selected" : "",
         state->getMode() == ThermostatMode::COMFORT ? "selected" : "",
         state->getMode() == ThermostatMode::ECO ? "selected" : "",
@@ -143,7 +150,7 @@ String HtmlGenerator::generateControlSection(ThermostatState* state) {
     return String(buf);
 }
 
-String HtmlGenerator::generateConfigSection(ConfigInterface* config) {
+String HtmlGenerator::generateConfigSection(ConfigInterface* config, const String& csrfToken) {
     if (!config) return "";
 
     char buf[512];
@@ -153,6 +160,7 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config) {
     <div class='card'>
         <div class='card-body'>
             <form id='configForm'>
+                <input type='hidden' name='_csrf' value='%s'>
                 <div class='mb-3'>
                     <label class='form-label'>Device Name</label>
                     <input type='text' class='form-control' name='deviceName' value='%s'>
@@ -176,6 +184,7 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config) {
     </div>
 </div>
 )",
+        csrfToken.c_str(),
         config->getDeviceName(),
         config->getSendInterval(),
         config->getWebUsername()
@@ -183,7 +192,7 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config) {
     return String(buf);
 }
 
-String HtmlGenerator::generatePIDSection(ControlInterface* control) {
+String HtmlGenerator::generatePIDSection(ControlInterface* control, const String& csrfToken) {
     if (!control) return "";
 
     char buf[512];
@@ -192,6 +201,7 @@ String HtmlGenerator::generatePIDSection(ControlInterface* control) {
     <h2>PID Control</h2>
     <div class='card'>
         <div class='card-body'>
+        <input type='hidden' name='_csrf' value='%s'>
             <div class='row'>
                 <div class='col-md-3'>
                     <label class='form-label'>Kp</label>
@@ -219,6 +229,7 @@ String HtmlGenerator::generatePIDSection(ControlInterface* control) {
     </div>
 </div>
 )",
+        csrfToken.c_str(),
         control->getKp(),
         control->getKi(),
         control->getKd(),
@@ -253,8 +264,14 @@ String HtmlGenerator::generateScripts() {
 <script>
 async function setSetpoint() {
     const value = document.getElementById('setpoint').value;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    
     await fetch('/setpoint', {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRF-Token': csrfToken
+        },
         body: `value=${value}`
     });
     location.reload();
@@ -262,9 +279,31 @@ async function setSetpoint() {
 
 async function setMode() {
     const mode = document.getElementById('mode').value;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    
     await fetch('/mode', {
         method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRF-Token': csrfToken
+        },
         body: `mode=${mode}`
+    });
+    location.reload();
+}
+
+async function updateControl() {
+    const mode = document.getElementById('mode').value;
+    const setpoint = document.getElementById('setpoint').value;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    
+    await fetch('/control', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-CSRF-Token': csrfToken
+        },
+        body: `mode=${mode}&setpoint=${setpoint}`
     });
     location.reload();
 }
@@ -273,11 +312,13 @@ async function saveConfig() {
     const form = document.getElementById('configForm');
     const data = new FormData(form);
     const json = Object.fromEntries(data.entries());
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     
     await fetch('/save', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify(json)
     });
@@ -291,11 +332,13 @@ async function updatePID() {
         kd: document.getElementById('kd').value,
         active: document.getElementById('pidActive').checked
     };
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     
     await fetch('/pid', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': csrfToken
         },
         body: JSON.stringify(data)
     });
@@ -303,8 +346,14 @@ async function updatePID() {
 }
 
 async function factoryReset() {
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     if (confirm('Are you sure you want to reset to factory defaults?')) {
-        await fetch('/reset', { method: 'POST' });
+        await fetch('/reset', { 
+            method: 'POST',
+            headers: {
+                'X-CSRF-Token': csrfToken
+            }
+        });
         location.reload();
     }
 }
@@ -322,4 +371,4 @@ setInterval(() => {
 }, 10000);
 </script>
 )";
-} 
+}
