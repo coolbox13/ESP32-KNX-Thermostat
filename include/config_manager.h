@@ -29,14 +29,14 @@ public:
     // ConfigInterface implementation
     bool begin() override;
     bool load() override { return loadConfig(); }
-    bool save() override { saveConfig(); return true; }
+    bool save() override { return saveConfig(); }
     void reset() override { resetToDefaults(); }
     
     // Additional methods
     void end();
     bool setupWiFi();
     bool loadConfig();
-    void saveConfig();
+    bool saveConfig();
     void resetToDefaults();
 
     // WiFi settings

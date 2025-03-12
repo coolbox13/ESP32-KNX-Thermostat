@@ -19,7 +19,7 @@ void WebInterface::handleRoot(AsyncWebServerRequest *request) {
         requestAuthentication(request);
         return;
     }
-    
+
     // Generate CSRF token for the session
     String csrfToken = generateCSRFToken(request);
     
@@ -54,7 +54,7 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
         request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Unsupported content type\"}");
         return;
     }
-    
+
     // Process device settings
     if (request->hasParam("deviceName", true)) {
         configManager->setDeviceName(request->getParam("deviceName", true)->value().c_str());
@@ -73,7 +73,7 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
         
         // Process device name from JSON
         if (doc.containsKey("deviceName")) {
-            configManager->setDeviceName(doc["deviceName"]);
+            configManager->setDeviceName(doc["deviceName"].as<const char*>());
             ESP_LOGI(TAG, "Device name updated to: %s", doc["deviceName"].as<const char*>());
         }
         
@@ -168,7 +168,11 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
     
     ESP_LOGI(TAG, "Calling configManager->saveConfig()");
     bool saveResult = configManager->saveConfig();
-    ESP_LOGI(TAG, "configManager->saveConfig() returned: %s", saveResult ? "true" : "false");
+    if (!saveResult) {
+        ESP_LOGE(TAG, "Failed to save configuration");
+        request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to save configuration\"}");
+        return;
+    }
     
     // Return a JSON response
     request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Configuration saved\"}");
@@ -253,14 +257,14 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
     String jsonData = request->getParam("plain", true)->value();
     StaticJsonDocument<256> doc;
     DeserializationError error = deserializeJson(doc, jsonData);
-    
+
     if (error) {
         ESP_LOGW(TAG, "Invalid JSON from IP: %s - %s", 
                  request->client()->remoteIP().toString().c_str(), error.c_str());
         request->send(400, "application/json", "{\"error\":\"Invalid JSON: " + String(error.c_str()) + "\"}");
         return;
     }
-    
+
     bool updated = false;
     
     // Get current PID configuration

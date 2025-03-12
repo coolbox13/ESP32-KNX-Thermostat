@@ -17,6 +17,7 @@
 #include "sensors/bme280_sensor_interface.h"
 #include "control/pid_controller.h"
 #include "web_interface.h"
+#include "main.h"
 
 static const char* TAG = "Main";
 
