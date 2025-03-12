@@ -401,23 +401,3 @@ void WebInterface::handleNotFound(AsyncWebServerRequest *request) {
         request->send(404, "text/plain", "File Not Found");
     }
 }
-
-void WebInterface::handleGetConfig(AsyncWebServerRequest *request) {
-    if (!isAuthenticated(request)) {
-        requestAuthentication(request);
-        return;
-    }
-
-    File configFile = LittleFS.open("/config.json", "r");
-    if (!configFile) {
-        request->send(500, "text/plain", "Failed to open config file");
-        return;
-    }
-
-    size_t size = configFile.size();
-    std::unique_ptr<char[]> buf(new char[size]);
-    configFile.readBytes(buf.get(), size);
-    configFile.close();
-
-    request->send(200, "application/json", buf.get());
-}
