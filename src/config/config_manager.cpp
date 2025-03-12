@@ -135,64 +135,54 @@ bool ConfigManager::loadConfig() {
 bool ConfigManager::saveConfig() {
     ESP_LOGI(TAG, "Attempting to save configuration...");
     
-    StaticJsonDocument<1024> doc;
-
-    // Save device settings
+    // Create JSON document
+    StaticJsonDocument<2048> doc;  // Increase size if necessary
+    ESP_LOGI(TAG, "Created JSON document");
+    
+    // Populate JSON document
     doc["deviceName"] = deviceName;
-
-    // Save web interface settings
-    JsonObject web = doc.createNestedObject("web");
-    web["username"] = webUsername;
-    web["password"] = webPassword;
-
-    // Save KNX settings
-    JsonObject knx = doc.createNestedObject("knx");
-    knx["enabled"] = knxEnabled;
-    JsonObject physical = knx.createNestedObject("physical");
-    physical["area"] = knxPhysicalAddress.area;
-    physical["line"] = knxPhysicalAddress.line;
-    physical["member"] = knxPhysicalAddress.member;
-
-    // Save MQTT settings
-    JsonObject mqtt = doc.createNestedObject("mqtt");
-    mqtt["enabled"] = mqttEnabled;
-    mqtt["server"] = mqttServer;
-    mqtt["port"] = mqttPort;
-    mqtt["username"] = mqttUser;
-    mqtt["password"] = mqttPassword;
-    mqtt["clientId"] = mqttClientId;
-    mqtt["topicPrefix"] = mqttTopicPrefix;
-
-    // Save PID settings
-    JsonObject pid = doc.createNestedObject("pid");
-    pid["kp"] = pidConfig.kp;
-    pid["ki"] = pidConfig.ki;
-    pid["kd"] = pidConfig.kd;
-    pid["minOutput"] = pidConfig.minOutput;
-    pid["maxOutput"] = pidConfig.maxOutput;
-    pid["sampleTime"] = pidConfig.sampleTime;
-
+    doc["updateInterval"] = updateInterval;
+    doc["knxAddress"] = String(knxArea) + "." + String(knxLine) + "." + String(knxMember);
+    doc["knxEnabled"] = knxEnabled;
+    doc["mqttEnabled"] = mqttEnabled;
+    doc["mqttServer"] = mqttServer;
+    doc["mqttPort"] = mqttPort;
+    doc["mqttUser"] = mqttUser;
+    doc["mqttPassword"] = mqttPassword;
+    doc["mqttClientId"] = mqttClientId;
+    doc["mqttTopicPrefix"] = mqttTopicPrefix;
+    ESP_LOGI(TAG, "Populated JSON document");
+    
+    // Open config file for writing
     File configFile = LittleFS.open("/config.json", "w");
     if (!configFile) {
         ESP_LOGE(TAG, "Failed to open config file for writing");
         return false;
     }
-
-    if (serializeJson(doc, configFile) == 0) {
-        ESP_LOGE(TAG, "Failed to write config file");
-        configFile.close();
-        return false;
+    ESP_LOGI(TAG, "Opened config file for writing");
+    
+    // Serialize JSON to file
+    String jsonStr;
+    serializeJson(doc, jsonStr);
+    ESP_LOGI(TAG, "JSON to save: %s", jsonStr.c_str());
+    
+    if (jsonStr.length() > 0) {
+        configFile.write(jsonStr.c_str(), jsonStr.length());
     }
+    ESP_LOGI(TAG, "Serialized JSON to file");
     
+    // Close file
     configFile.close();
-    ESP_LOGI(TAG, "Configuration saved successfully");
+    ESP_LOGI(TAG, "Closed config file");
     
-    // Verify the file exists
+    // Verify file exists
     if (!LittleFS.exists("/config.json")) {
         ESP_LOGE(TAG, "Config file does not exist after saving");
         return false;
     }
+    ESP_LOGI(TAG, "Config file exists after saving");
     
+    ESP_LOGI(TAG, "Configuration saved successfully");
     return true;
 }
 
