@@ -31,7 +31,7 @@ ConfigManager::ConfigManager() {
     
     // KNX defaults
     knxEnabled = false;
-    knxPhysicalAddress = {1, 1, 1};
+    knxPhysicalAddress = {1, 1, 160};
     
     // MQTT defaults
     mqttEnabled = false;

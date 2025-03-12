@@ -29,6 +29,7 @@ bool WebInterface::begin() {
     ESP_LOGI(TAG, "Starting web interface...");
     
     // Note: LittleFS is now initialized in main.cpp
+    server.serveStatic("/style.css", LittleFS, "/style.css"); // <-- Serve CSS
     
     try {
         // Set up request handlers

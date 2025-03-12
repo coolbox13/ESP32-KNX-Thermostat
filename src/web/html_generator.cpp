@@ -24,14 +24,14 @@ String HtmlGenerator::generatePage(
 String HtmlGenerator::generateHeader(const String& csrfToken) {
     return R"(
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
     <meta name="csrf-token" content=")" + csrfToken + R"(">
     <title>KNX Thermostat V1.0</title>
-    <link rel='stylesheet' href='https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'>
-)" + generateStyles() + R"(
+    <!-- Load custom CSS from LittleFS -->
+    <link rel='stylesheet' href='/style.css'>
 </head>
 <body>
 )";
@@ -65,44 +65,80 @@ String HtmlGenerator::generateNavigation() {
 
 String HtmlGenerator::generateStatusSection(ThermostatState* state) {
     if (!state) return "";
-
-    char buf[256];
+    
+    // Increase buffer to ensure complete HTML is generated
+    char buf[1024];
     snprintf(buf, sizeof(buf), R"(
-<div id='status' class='section'>
+<div id="status" class="section">
     <h2>Status</h2>
-    <div class='row'>
-        <div class='col-md-4'>
-            <div class='card'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Temperature</h5>
-                    <p class='card-text temperature'>%.1f°C</p>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Temperature</h5>
+                    <p id="temperature" class="card-text temperature">%.1f°C</p>
                 </div>
             </div>
         </div>
-        <div class='col-md-4'>
-            <div class='card'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Humidity</h5>
-                    <p class='card-text humidity'>%.1f%%</p>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Humidity</h5>
+                    <p id="humidity" class="card-text humidity">%.1f%%</p>
                 </div>
             </div>
         </div>
-        <div class='col-md-4'>
-            <div class='card'>
-                <div class='card-body'>
-                    <h5 class='card-title'>Pressure</h5>
-                    <p class='card-text pressure'>%.1f hPa</p>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Pressure</h5>
+                    <p id="pressure" class="card-text pressure">%.1f hPa</p>
                 </div>
             </div>
         </div>
     </div>
 </div>
-)", 
+)",
         state->getCurrentTemperature(),
         state->getCurrentHumidity(),
         state->getCurrentPressure()
     );
     return String(buf);
+}
+
+String HtmlGenerator::generateControlSection(ThermostatState* state, const String& csrfToken) {
+    if (!state) return "";
+
+    String html;
+    html += "<div id='control' class='section container mt-4'>\n";
+    html += "  <div class='card'>\n";
+    html += "    <div class='card-header'>\n";
+    html += "      <h2>Control</h2>\n";
+    html += "    </div>\n";
+    html += "    <div class='card-body'>\n";
+    // Add hidden CSRF token field for forms if needed
+    html += "      <input type='hidden' name='_csrf' value='" + csrfToken + "'>\n";
+    // Mode selection control
+    html += "      <div class='mb-3'>\n";
+    html += "        <label class='form-label' for='mode'>Mode</label>\n";
+    html += "        <select class='form-select' id='mode' name='mode'>\n";
+    html += "          <option value='on'>On</option>\n";
+    html += "          <option value='off'>Off</option>\n";
+    html += "        </select>\n";
+    html += "      </div>\n";
+    // Temperature setpoint control
+    html += "      <div class='mb-3'>\n";
+    html += "        <label class='form-label' for='setpoint'>Temperature Setpoint</label>\n";
+    html += "        <input type='number' class='form-control' id='setpoint' name='setpoint' value='" + String(state->getTargetTemperature()) + "' min='10' max='30' step='0.5'>\n";
+    html += "      </div>\n";
+    // Action buttons for setting mode and setpoint
+    html += "      <button type='button' class='btn btn-primary' onclick='setMode()'>Set Mode</button>\n";
+    html += "      <button type='button' class='btn btn-primary ms-2' onclick='setSetpoint()'>Set Temperature</button>\n";
+    html += "    </div>\n";
+    html += "  </div>\n";
+    html += "</div>\n";
+    
+    return html;
 }
 
 String HtmlGenerator::generateConfigSection(ConfigInterface* config, const String& csrfToken) {
@@ -196,46 +232,43 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config, const Strin
     return html;
 }
 
-
-
-
 String HtmlGenerator::generatePIDSection(ControlInterface* control, const String& csrfToken) {
     if (!control) return "";
-
-    char buf[512];
-    snprintf(buf, sizeof(buf), R"(
-<div id='pid' class='section'>
+    
+    char buf[1024];
+    snprintf(buf, sizeof(buf), R"PID(
+<div id="pid" class="section">
     <h2>PID Control</h2>
-    <div class='card'>
-        <div class='card-body'>
-        <input type='hidden' name='_csrf' value='%s'>
-            <div class='row'>
-                <div class='col-md-3'>
-                    <label class='form-label'>Kp</label>
-                    <input type='number' class='form-control' id='kp' value='%.2f' step='0.1'>
+    <div class="card">
+        <div class="card-body">
+            <input type="hidden" name="_csrf" value="%s">
+            <div class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Kp</label>
+                    <input type="number" class="form-control" id="kp" value="%.2f" step="0.1">
                 </div>
-                <div class='col-md-3'>
-                    <label class='form-label'>Ki</label>
-                    <input type='number' class='form-control' id='ki' value='%.2f' step='0.01'>
+                <div class="col-md-3">
+                    <label class="form-label">Ki</label>
+                    <input type="number" class="form-control" id="ki" value="%.2f" step="0.01">
                 </div>
-                <div class='col-md-3'>
-                    <label class='form-label'>Kd</label>
-                    <input type='number' class='form-control' id='kd' value='%.2f' step='0.01'>
+                <div class="col-md-3">
+                    <label class="form-label">Kd</label>
+                    <input type="number" class="form-control" id="kd" value="%.2f" step="0.01">
                 </div>
-                <div class='col-md-3'>
-                    <label class='form-label'>Output</label>
-                    <input type='number' class='form-control' value='%.1f' readonly>
+                <div class="col-md-3">
+                    <label class="form-label">Output</label>
+                    <input type="number" class="form-control" id="pidOutput" value="%.1f" readonly>
                 </div>
             </div>
-            <div class='form-check mt-3'>
-                <input class='form-check-input' type='checkbox' id='pidActive' %s>
-                <label class='form-check-label'>PID Active</label>
+            <div class="form-check mt-3">
+                <input class="form-check-input" type="checkbox" id="pidActive" %s>
+                <label class="form-check-label" for="pidActive">PID Active</label>
             </div>
-            <button class='btn btn-primary mt-3' onclick='updatePID()'>Update</button>
+            <button class="btn btn-primary mt-3" onclick="updatePID()">Update</button>
         </div>
     </div>
 </div>
-)",
+)PID",
         csrfToken.c_str(),
         control->getKp(),
         control->getKi(),
@@ -246,13 +279,16 @@ String HtmlGenerator::generatePIDSection(ControlInterface* control, const String
     return String(buf);
 }
 
+
 String HtmlGenerator::generateFooter() {
     return R"(
-    <script src='https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'></script>
-)" + generateScripts() + R"(
-</body>
-</html>
-)";
+    <footer>
+        <p>&copy; 2025 Coolbox</p>
+    </footer>
+    )" + generateScripts() + R"(
+    </body>
+    </html>
+    )";
 }
 
 String HtmlGenerator::generateStyles() {

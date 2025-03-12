@@ -1,4 +1,5 @@
 #include "web_interface.h"
+#include "web/html_generator.h"  // <-- Added include for HtmlGenerator
 #include "config_manager.h"
 #include "sensor_interface.h"
 #include "thermostat_state.h"
@@ -18,67 +19,19 @@ void WebInterface::handleRoot(AsyncWebServerRequest *request) {
         requestAuthentication(request);
         return;
     }
-
-    // Generate CSRF token and pass it to the template
+    
+    // Generate CSRF token for the session
     String csrfToken = generateCSRFToken(request);
     
-    // Use the data/index.html template
-    File file = LittleFS.open("/index.html", "r");
-    if (!file) {
-        request->send(500, "text/plain", "Could not open index.html");
-        return;
-    }
+    // Generate the full HTML page dynamically using HtmlGenerator
+    String html = HtmlGenerator::generatePage(thermostatState, configManager, pidController, csrfToken);
     
-    String html = file.readString();
-    file.close();
-    
-    // Add CSRF token meta tag to head section
-    int headEnd = html.indexOf("</head>");
-    if (headEnd > 0) {
-        String metaTag = "<meta name=\"csrf-token\" content=\"" + csrfToken + "\">\n";
-        String firstPart = html.substring(0, headEnd);
-        String lastPart = html.substring(headEnd);
-        html = firstPart + metaTag + lastPart;
-    }
-    
-    // Add CSRF token to all forms
-    html.replace("<form", "<form onsubmit=\"return addCsrfToken(this)\"");
-    
-    // Add CSRF JavaScript
-    int bodyEnd = html.indexOf("</body>");
-    if (bodyEnd > 0) {
-        String script = R"(
-<script>
-function addCsrfToken(form) {
-    const token = document.querySelector('meta[name="csrf-token"]').content;
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = '_csrf';
-    input.value = token;
-    form.appendChild(input);
-    return true;
-}
-
-// Add CSRF token to fetch requests
-const originalFetch = window.fetch;
-window.fetch = function(url, options = {}) {
-    if (options.method && options.method.toUpperCase() !== 'GET') {
-        if (!options.headers) options.headers = {};
-        options.headers['X-CSRF-Token'] = document.querySelector('meta[name="csrf-token"]').content;
-    }
-    return originalFetch(url, options);
-};
-</script>
-)";
-        String firstPart = html.substring(0, bodyEnd);
-        String lastPart = html.substring(bodyEnd);
-        html = firstPart + script + lastPart;
-    }
-    
+    // Create and send the response with security headers
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", html);
     addSecurityHeaders(response);
     request->send(response);
 }
+
 
 void WebInterface::handleSave(AsyncWebServerRequest *request) {
     if (!isAuthenticated(request)) {
