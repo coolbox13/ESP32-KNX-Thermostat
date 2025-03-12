@@ -1,7 +1,0 @@
-{
-    "deviceName": "Thermostat",
-    "updateInterval": 1000,
-    "knxEnabled": true,
-    "knxAddress": "1.1.1",
-    "mqttEnabled": false
-  }

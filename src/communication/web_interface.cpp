@@ -46,6 +46,7 @@ bool WebInterface::begin() {
         server.on("/reboot", HTTP_POST, std::bind(&WebInterface::handleReboot, this, std::placeholders::_1));
         server.on("/factory_reset", HTTP_POST, std::bind(&WebInterface::handleFactoryReset, this, std::placeholders::_1));
         server.on("/config", HTTP_GET, std::bind(&WebInterface::handleGetConfig, this, std::placeholders::_1));
+        server.on("/create_config", HTTP_POST, std::bind(&WebInterface::handleCreateConfig, this, std::placeholders::_1));
         // Set up MDNS for easy access
         setupMDNS();
         
@@ -247,4 +248,41 @@ void WebInterface::handleGetConfig(AsyncWebServerRequest *request) {
 
     // Send the raw file contents as plain text
     request->send(200, "text/plain", buf.get());
+}
+
+// Add to web_interface.cpp - full implementation
+void WebInterface::handleCreateConfig(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
+        return;
+    }
+
+    if (request->hasParam("plain", true)) {
+        String jsonData = request->getParam("plain", true)->value();
+        ESP_LOGI(TAG, "Received config JSON: %s", jsonData.c_str());
+        
+        // Directly write to the config file
+        File configFile = LittleFS.open("/config.json", "w");
+        if (!configFile) {
+            ESP_LOGE(TAG, "Failed to open config file for writing");
+            request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to open config file\"}");
+            return;
+        }
+        
+        // Write the JSON as-is
+        configFile.print(jsonData);
+        configFile.close();
+        
+        // Verify file exists
+        if (!LittleFS.exists("/config.json")) {
+            ESP_LOGE(TAG, "Config file does not exist after writing");
+            request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to create config file\"}");
+            return;
+        }
+        
+        ESP_LOGI(TAG, "Config file created successfully");
+        request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Config file created\"}");
+    } else {
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"No JSON data received\"}");
+    }
 }

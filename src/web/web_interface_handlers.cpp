@@ -57,89 +57,98 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
             return;
         }
         
-        // Process device name from JSON
-        if (doc.containsKey("deviceName")) {
-            configManager->setDeviceName(doc["deviceName"]);
-            ESP_LOGI(TAG, "Device name updated to: %s", doc["deviceName"].as<const char*>());
-        }
-        
-        // Process update interval
-        if (doc.containsKey("updateInterval")) {
-            configManager->setSendInterval(doc["updateInterval"]);
-            ESP_LOGI(TAG, "Update interval set to: %lu", doc["updateInterval"].as<unsigned long>());
-        }
-        
-        // Process web credentials
-        if (doc.containsKey("webUsername")) {
-            configManager->setWebUsername(doc["webUsername"]);
-        }
-        
-        if (doc.containsKey("webPassword")) {
-            configManager->setWebPassword(doc["webPassword"]);
-        }
-        
-        // Process KNX address
-        if (doc.containsKey("knxAddress")) {
-            String addr = doc["knxAddress"];
-            int firstDot = addr.indexOf('.');
-            int secondDot = addr.indexOf('.', firstDot + 1);
+        // Process device settings
+        if (doc.containsKey("device")) {
+            JsonObject device = doc["device"];
+            if (device.containsKey("name")) {
+                configManager->setDeviceName(device["name"]);
+                ESP_LOGI(TAG, "Device name updated to: %s", device["name"].as<const char*>());
+            }
             
-            if (firstDot > 0 && secondDot > firstDot) {
-                uint8_t area = addr.substring(0, firstDot).toInt();
-                uint8_t line = addr.substring(firstDot + 1, secondDot).toInt();
-                uint8_t member = addr.substring(secondDot + 1).toInt();
-                
-                configManager->setKnxPhysicalAddress(area, line, member);
-                ESP_LOGI(TAG, "KNX address set to: %d.%d.%d", area, line, member);
+            if (device.containsKey("sendInterval")) {
+                configManager->setSendInterval(device["sendInterval"]);
+                ESP_LOGI(TAG, "Update interval set to: %lu", device["sendInterval"].as<unsigned long>());
             }
         }
         
-        // Process KNX enabled flag
-        if (doc.containsKey("knxEnabled")) {
-            configManager->setKnxEnabled(doc["knxEnabled"]);
-            ESP_LOGI(TAG, "KNX %s", doc["knxEnabled"].as<bool>() ? "enabled" : "disabled");
+        // Process web credentials
+        if (doc.containsKey("web")) {
+            JsonObject web = doc["web"];
+            if (web.containsKey("username")) {
+                configManager->setWebUsername(web["username"]);
+            }
+            
+            if (web.containsKey("password")) {
+                configManager->setWebPassword(web["password"]);
+            }
+        }
+        
+        // Process KNX settings
+        if (doc.containsKey("knx")) {
+            JsonObject knx = doc["knx"];
+            
+            if (knx.containsKey("enabled")) {
+                configManager->setKnxEnabled(knx["enabled"]);
+                ESP_LOGI(TAG, "KNX %s", knx["enabled"].as<bool>() ? "enabled" : "disabled");
+            }
+            
+            if (knx.containsKey("physical")) {
+                JsonObject physical = knx["physical"];
+                if (physical.containsKey("area") && physical.containsKey("line") && physical.containsKey("member")) {
+                    uint8_t area = physical["area"].as<uint8_t>();
+                    uint8_t line = physical["line"].as<uint8_t>();
+                    uint8_t member = physical["member"].as<uint8_t>();
+                    
+                    configManager->setKnxPhysicalAddress(area, line, member);
+                    ESP_LOGI(TAG, "KNX address set to: %d.%d.%d", area, line, member);
+                }
+            }
         }
         
         // Process MQTT settings
-        if (doc.containsKey("mqttEnabled")) {
-            configManager->setMQTTEnabled(doc["mqttEnabled"]);
-            ESP_LOGI(TAG, "MQTT %s", doc["mqttEnabled"].as<bool>() ? "enabled" : "disabled");
+        if (doc.containsKey("mqtt")) {
+            JsonObject mqtt = doc["mqtt"];
+            
+            if (mqtt.containsKey("enabled")) {
+                configManager->setMQTTEnabled(mqtt["enabled"]);
+                ESP_LOGI(TAG, "MQTT %s", mqtt["enabled"].as<bool>() ? "enabled" : "disabled");
+            }
+            
+            if (mqtt.containsKey("server")) {
+                configManager->setMQTTServer(mqtt["server"]);
+                ESP_LOGI(TAG, "MQTT server set to: %s", mqtt["server"].as<const char*>());
+            }
+            
+            if (mqtt.containsKey("port")) {
+                configManager->setMQTTPort(mqtt["port"]);
+                ESP_LOGI(TAG, "MQTT port set to: %d", mqtt["port"].as<uint16_t>());
+            }
+            
+            if (mqtt.containsKey("username")) {
+                configManager->setMQTTUser(mqtt["username"]);
+            }
+            
+            if (mqtt.containsKey("password")) {
+                configManager->setMQTTPassword(mqtt["password"]);
+            }
+            
+            if (mqtt.containsKey("clientId")) {
+                configManager->setMQTTClientId(mqtt["clientId"]);
+            }
+            
+            if (mqtt.containsKey("topicPrefix")) {
+                configManager->setMQTTTopicPrefix(mqtt["topicPrefix"]);
+            }
         }
         
-        if (doc.containsKey("mqttServer")) {
-            configManager->setMQTTServer(doc["mqttServer"]);
-            ESP_LOGI(TAG, "MQTT server set to: %s", doc["mqttServer"].as<const char*>());
-        }
-        
-        if (doc.containsKey("mqttPort")) {
-            configManager->setMQTTPort(doc["mqttPort"]);
-            ESP_LOGI(TAG, "MQTT port set to: %d", doc["mqttPort"].as<uint16_t>());
-        }
-        
-        if (doc.containsKey("mqttUser")) {
-            configManager->setMQTTUser(doc["mqttUser"]);
-        }
-        
-        if (doc.containsKey("mqttPassword")) {
-            configManager->setMQTTPassword(doc["mqttPassword"]);
-        }
-        
-        if (doc.containsKey("mqttClientId")) {
-            configManager->setMQTTClientId(doc["mqttClientId"]);
-        }
-        
-        if (doc.containsKey("mqttTopicPrefix")) {
-            configManager->setMQTTTopicPrefix(doc["mqttTopicPrefix"]);
-        }
-        
-        // Process PID settings if present
+        // Process PID settings
         if (doc.containsKey("pid")) {
             JsonObject pid = doc["pid"];
             if (pid.containsKey("kp")) configManager->setKp(pid["kp"]);
             if (pid.containsKey("ki")) configManager->setKi(pid["ki"]);
             if (pid.containsKey("kd")) configManager->setKd(pid["kd"]);
             
-            // Update PID controller to match config
+            // Update PID controller with new values
             if (pidController) {
                 PIDConfig config = {
                     .kp = configManager->getKp(),
@@ -152,11 +161,16 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
                 pidController->configure(&config);
             }
         }
+        
+        // Save configuration to flash
+        if (!configManager->saveConfig()) {
+            ESP_LOGE(TAG, "Failed to save configuration");
+            request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to save configuration\"}");
+            return;
+        }
+        
+        ESP_LOGI(TAG, "Configuration saved successfully");
     }
-    
-    // Save configuration to flash
-    configManager->saveConfig();
-    ESP_LOGI(TAG, "Configuration saved successfully");
     
     // Return a JSON response
     request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Configuration saved\"}");

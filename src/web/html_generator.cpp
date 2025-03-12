@@ -153,7 +153,7 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config, const Strin
 
     String knxAddress = String(area) + "." + String(line) + "." + String(member);
     
-    // Build the HTML using Bootstrap classes
+    // Build the HTML form with the correctly nested structure
     String html;
     html += "<div id='config' class='section container mt-4'>\n";
     html += "  <div class='card'>\n";
@@ -162,63 +162,70 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config, const Strin
     html += "    </div>\n";
     html += "    <div class='card-body'>\n";
     html += "      <form id='configForm'>\n";
-    // Include CSRF token hidden input for additional security
     html += "        <input type='hidden' name='_csrf' value='" + csrfToken + "'>\n";
     
     // Device Settings Section
     html += "        <h4>Device Settings</h4>\n";
     html += "        <div class='mb-3'>\n";
-    html += "          <label class='form-label' for='deviceName'>Device Name</label>\n";
-    html += "          <input type='text' class='form-control' id='deviceName' name='deviceName' value='" + String(config->getDeviceName()) + "'>\n";
+    html += "          <label class='form-label' for='device.name'>Device Name</label>\n";
+    html += "          <input type='text' class='form-control' id='device.name' name='device[name]' value='" + String(config->getDeviceName()) + "'>\n";
     html += "        </div>\n";
     html += "        <div class='mb-3'>\n";
-    html += "          <label class='form-label' for='updateInterval'>Update Interval (ms)</label>\n";
-    html += "          <input type='number' class='form-control' id='updateInterval' name='updateInterval' value='" + String(config->getSendInterval()) + "' min='1000' step='1000'>\n";
+    html += "          <label class='form-label' for='device.sendInterval'>Update Interval (ms)</label>\n";
+    html += "          <input type='number' class='form-control' id='device.sendInterval' name='device[sendInterval]' value='" + String(config->getSendInterval()) + "' min='1000' step='1000'>\n";
     html += "        </div>\n";
     
     // KNX Settings Section
     html += "        <h4>KNX Settings</h4>\n";
     html += "        <div class='mb-3 form-check'>\n";
-    html += "          <input type='checkbox' class='form-check-input' id='knxEnabled' name='knxEnabled' " + String(config->getKnxEnabled() ? "checked" : "") + ">\n";
-    html += "          <label class='form-check-label' for='knxEnabled'>Enable KNX</label>\n";
+    html += "          <input type='checkbox' class='form-check-input' id='knx.enabled' name='knx[enabled]' " + String(config->getKnxEnabled() ? "checked" : "") + ">\n";
+    html += "          <label class='form-check-label' for='knx.enabled'>Enable KNX</label>\n";
     html += "        </div>\n";
     html += "        <div class='mb-3'>\n";
-    html += "          <label class='form-label' for='knxAddress'>KNX Address</label>\n";
-    html += "          <input type='text' class='form-control' id='knxAddress' name='knxAddress' pattern='\\d{1,2}\\.\\d{1,2}\\.\\d{1,3}' value='" + knxAddress + "'>\n";
+    html += "          <label class='form-label' for='knx.physical.area'>KNX Area</label>\n";
+    html += "          <input type='number' class='form-control' id='knx.physical.area' name='knx[physical][area]' value='" + String(area) + "' min='0' max='15'>\n";
+    html += "        </div>\n";
+    html += "        <div class='mb-3'>\n";
+    html += "          <label class='form-label' for='knx.physical.line'>KNX Line</label>\n";
+    html += "          <input type='number' class='form-control' id='knx.physical.line' name='knx[physical][line]' value='" + String(line) + "' min='0' max='15'>\n";
+    html += "        </div>\n";
+    html += "        <div class='mb-3'>\n";
+    html += "          <label class='form-label' for='knx.physical.member'>KNX Member</label>\n";
+    html += "          <input type='number' class='form-control' id='knx.physical.member' name='knx[physical][member]' value='" + String(member) + "' min='0' max='255'>\n";
     html += "        </div>\n";
     
     // MQTT Settings Section
     html += "        <h4>MQTT Settings</h4>\n";
     html += "        <div class='mb-3 form-check'>\n";
-    html += "          <input type='checkbox' class='form-check-input' id='mqttEnabled' name='mqttEnabled' " + String(config->getMqttEnabled() ? "checked" : "") + ">\n";
-    html += "          <label class='form-check-label' for='mqttEnabled'>Enable MQTT</label>\n";
+    html += "          <input type='checkbox' class='form-check-input' id='mqtt.enabled' name='mqtt[enabled]' " + String(config->getMqttEnabled() ? "checked" : "") + ">\n";
+    html += "          <label class='form-check-label' for='mqtt.enabled'>Enable MQTT</label>\n";
     html += "        </div>\n";
     
     // Conditionally include MQTT-specific fields if available
     if (ConfigManager* configManager = dynamic_cast<ConfigManager*>(config)) {
         html += "        <div class='mb-3'>\n";
-        html += "          <label class='form-label' for='mqttServer'>MQTT Server</label>\n";
-        html += "          <input type='text' class='form-control' id='mqttServer' name='mqttServer' value='" + String(configManager->getMQTTServer()) + "'>\n";
+        html += "          <label class='form-label' for='mqtt.server'>MQTT Server</label>\n";
+        html += "          <input type='text' class='form-control' id='mqtt.server' name='mqtt[server]' value='" + String(configManager->getMQTTServer()) + "'>\n";
         html += "        </div>\n";
         html += "        <div class='mb-3'>\n";
-        html += "          <label class='form-label' for='mqttPort'>MQTT Port</label>\n";
-        html += "          <input type='number' class='form-control' id='mqttPort' name='mqttPort' value='" + String(configManager->getMQTTPort()) + "'>\n";
+        html += "          <label class='form-label' for='mqtt.port'>MQTT Port</label>\n";
+        html += "          <input type='number' class='form-control' id='mqtt.port' name='mqtt[port]' value='" + String(configManager->getMQTTPort()) + "'>\n";
         html += "        </div>\n";
         html += "        <div class='mb-3'>\n";
-        html += "          <label class='form-label' for='mqttUser'>MQTT Username</label>\n";
-        html += "          <input type='text' class='form-control' id='mqttUser' name='mqttUser' value='" + String(configManager->getMQTTUser()) + "'>\n";
+        html += "          <label class='form-label' for='mqtt.username'>MQTT Username</label>\n";
+        html += "          <input type='text' class='form-control' id='mqtt.username' name='mqtt[username]' value='" + String(configManager->getMQTTUser()) + "'>\n";
         html += "        </div>\n";
         html += "        <div class='mb-3'>\n";
-        html += "          <label class='form-label' for='mqttPassword'>MQTT Password</label>\n";
-        html += "          <input type='password' class='form-control' id='mqttPassword' name='mqttPassword'>\n";
+        html += "          <label class='form-label' for='mqtt.password'>MQTT Password</label>\n";
+        html += "          <input type='password' class='form-control' id='mqtt.password' name='mqtt[password]'>\n";
         html += "        </div>\n";
         html += "        <div class='mb-3'>\n";
-        html += "          <label class='form-label' for='mqttClientId'>MQTT Client ID</label>\n";
-        html += "          <input type='text' class='form-control' id='mqttClientId' name='mqttClientId' value='" + String(configManager->getMQTTClientId()) + "'>\n";
+        html += "          <label class='form-label' for='mqtt.clientId'>MQTT Client ID</label>\n";
+        html += "          <input type='text' class='form-control' id='mqtt.clientId' name='mqtt[clientId]' value='" + String(configManager->getMQTTClientId()) + "'>\n";
         html += "        </div>\n";
         html += "        <div class='mb-3'>\n";
-        html += "          <label class='form-label' for='mqttTopicPrefix'>MQTT Topic Prefix</label>\n";
-        html += "          <input type='text' class='form-control' id='mqttTopicPrefix' name='mqttTopicPrefix' value='" + String(configManager->getMQTTTopicPrefix()) + "'>\n";
+        html += "          <label class='form-label' for='mqtt.topicPrefix'>MQTT Topic Prefix</label>\n";
+        html += "          <input type='text' class='form-control' id='mqtt.topicPrefix' name='mqtt[topicPrefix]' value='" + String(configManager->getMQTTTopicPrefix()) + "'>\n";
         html += "        </div>\n";
     }
     
@@ -226,6 +233,8 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config, const Strin
     html += "        <button type='button' class='btn btn-primary' onclick='saveConfig()'>Save Configuration</button>\n";
     html += "        <button type='button' class='btn btn-danger ms-2' onclick='factoryReset()'>Factory Reset</button>\n";
     html += "        <button type='button' class='btn btn-info ms-2' onclick='showConfig()'>Show Config</button>\n";
+    html += "        <button type='button' class='btn btn-warning ms-2' onclick='saveConfigDirect()'>Save Test Config</button>\n";
+    html += "        <button type='button' class='btn btn-success ms-2' onclick='createMinimalConfig()'>Create Minimal Config</button>\n";
     html += "      </form>\n";
     html += "      <pre id='configContents' class='mt-3'></pre>\n";
     html += "    </div>\n";

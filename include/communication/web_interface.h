@@ -35,6 +35,7 @@ public:
     void handleMode(AsyncWebServerRequest* request);
     void handlePID(AsyncWebServerRequest* request);
     void handleGetConfig(AsyncWebServerRequest *request);
+    void handleCreateConfig(AsyncWebServerRequest* request);
 
     
     // Utility methods

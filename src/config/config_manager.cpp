@@ -153,27 +153,45 @@ bool ConfigManager::saveConfig() {
         }
     }
 
-    // Populate JSON document
-    doc["web_username"] = webUsername;
-    doc["web_password"] = webPassword;
-    doc["knx_enabled"] = knxEnabled;
-    doc["knx_physical_area"] = knxPhysicalAddress.area;
-    doc["knx_physical_line"] = knxPhysicalAddress.line;
-    doc["knx_physical_member"] = knxPhysicalAddress.member;
-    doc["mqtt_enabled"] = mqttEnabled;
-    doc["mqtt_server"] = mqttServer;
-    doc["mqtt_port"] = mqttPort;
-    doc["mqtt_username"] = mqttUser;
-    doc["mqtt_password"] = mqttPassword;
-    doc["mqtt_clientId"] = mqttClientId;
-    doc["mqtt_topicPrefix"] = mqttTopicPrefix;
-    doc["pid_kp"] = pidConfig.kp;
-    doc["pid_ki"] = pidConfig.ki;
-    doc["pid_kd"] = pidConfig.kd;
-    doc["pid_minOutput"] = pidConfig.minOutput;
-    doc["pid_maxOutput"] = pidConfig.maxOutput;
-    doc["pid_sampleTime"] = pidConfig.sampleTime;
-    ESP_LOGI(TAG, "Populated JSON document");
+    // Populate JSON document with a nested structure
+    
+    // Web settings
+    JsonObject web = doc.containsKey("web") ? doc["web"].as<JsonObject>() : doc.createNestedObject("web");
+    web["username"] = webUsername;
+    web["password"] = webPassword;
+    
+    // KNX settings
+    JsonObject knx = doc.containsKey("knx") ? doc["knx"].as<JsonObject>() : doc.createNestedObject("knx");
+    knx["enabled"] = knxEnabled;
+    
+    JsonObject knxPhysical = knx.containsKey("physical") ? knx["physical"].as<JsonObject>() : knx.createNestedObject("physical");
+    knxPhysical["area"] = knxPhysicalAddress.area;
+    knxPhysical["line"] = knxPhysicalAddress.line;
+    knxPhysical["member"] = knxPhysicalAddress.member;
+    
+    // MQTT settings
+    JsonObject mqtt = doc.containsKey("mqtt") ? doc["mqtt"].as<JsonObject>() : doc.createNestedObject("mqtt");
+    mqtt["enabled"] = mqttEnabled;
+    mqtt["server"] = mqttServer;
+    mqtt["port"] = mqttPort;
+    mqtt["username"] = mqttUser;
+    mqtt["password"] = mqttPassword;
+    mqtt["clientId"] = mqttClientId;
+    mqtt["topicPrefix"] = mqttTopicPrefix;
+    
+    // Device settings
+    JsonObject device = doc.containsKey("device") ? doc["device"].as<JsonObject>() : doc.createNestedObject("device");
+    device["name"] = deviceName;
+    device["sendInterval"] = sendInterval;
+    
+    // PID settings
+    JsonObject pid = doc.containsKey("pid") ? doc["pid"].as<JsonObject>() : doc.createNestedObject("pid");
+    pid["kp"] = pidConfig.kp;
+    pid["ki"] = pidConfig.ki;
+    pid["kd"] = pidConfig.kd;
+    pid["minOutput"] = pidConfig.minOutput;
+    pid["maxOutput"] = pidConfig.maxOutput;
+    pid["sampleTime"] = pidConfig.sampleTime;
 
     // Log the JSON content for debugging
     String jsonStr;

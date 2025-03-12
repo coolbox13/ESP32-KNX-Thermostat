@@ -76,12 +76,39 @@ window.setMode = async function setMode() {
     }
 }
 
-// Save configuration
 window.saveConfig = async function saveConfig() {
     try {
-        const form = document.getElementById('configForm');
-        const data = new FormData(form);
-        const json = Object.fromEntries(data.entries());
+        // Build JSON directly from form fields using exact IDs
+        const jsonData = {
+            device: {
+                name: document.getElementById('device.name').value,
+                sendInterval: parseInt(document.getElementById('device.sendInterval').value)
+            },
+            knx: {
+                enabled: document.getElementById('knx.enabled').checked,
+                physical: {
+                    area: parseInt(document.getElementById('knx.physical.area').value),
+                    line: parseInt(document.getElementById('knx.physical.line').value),
+                    member: parseInt(document.getElementById('knx.physical.member').value)
+                }
+            },
+            mqtt: {
+                enabled: document.getElementById('mqtt.enabled').checked,
+                server: document.getElementById('mqtt.server').value,
+                port: parseInt(document.getElementById('mqtt.port').value),
+                username: document.getElementById('mqtt.username').value,
+                password: document.getElementById('mqtt.password').value,
+                clientId: document.getElementById('mqtt.clientId').value,
+                topicPrefix: document.getElementById('mqtt.topicPrefix').value
+            },
+            web: {
+                username: "admin",
+                password: "admin"
+            }
+        };
+        
+        console.log('Saving configuration:', jsonData);
+        
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         
         const response = await fetch('/save', {
@@ -90,48 +117,76 @@ window.saveConfig = async function saveConfig() {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken
             },
-            body: JSON.stringify(json)
+            body: JSON.stringify(jsonData)
         });
         
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        try {
-            const result = await response.json();
-            if (result.status === "ok") {
-                alert("Configuration saved successfully");
-                location.reload();
-            } else {
-                alert("Error: " + (result.message || "Unknown error"));
-            }
-        } catch (jsonError) {
-            // Fall back to text response if JSON parsing fails
-            const text = await response.text();
-            alert("Configuration saved");
-            location.reload();
-        }
+        const result = await response.json();
+        alert("Configuration saved successfully");
+        location.reload();
     } catch (error) {
-        logError('Failed to save configuration: ' + error);
+        console.error('Failed to save configuration:', error);
+        alert('Error saving configuration: ' + error.message);
     }
 }
 
-// Factory reset
-window.factoryReset = async function factoryReset() {
-    if (confirm('Are you sure you want to reset to factory defaults?')) {
-        try {
-            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-            // If your route is "/factory_reset" instead of "/reset", update here:
-            await fetch('/factory_reset', { 
-                method: 'POST',
-                headers: {
-                    'X-CSRF-Token': csrfToken
+// Alternative direct configuration approach
+window.saveConfigDirect = async function saveConfigDirect() {
+    try {
+        // Create a test configuration to bypass form processing
+        const testConfig = {
+            device: {
+                name: "Thermostat-Test",
+                sendInterval: 1000
+            },
+            knx: {
+                enabled: false,
+                physical: {
+                    area: 1,
+                    line: 1,
+                    member: 159
                 }
-            });
-            location.reload();
-        } catch (error) {
-            logError('Failed to perform factory reset: ' + error);
+            },
+            mqtt: {
+                enabled: false,
+                server: "192.168.178.35",
+                port: 1883,
+                username: "",
+                password: "",
+                clientId: "edummy",
+                topicPrefix: "esp32/thermostat/"
+            },
+            web: {
+                username: "admin",
+                password: "admin"
+            }
+        };
+        
+        console.log('Saving test configuration:', testConfig);
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        
+        const response = await fetch('/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify(testConfig)
+        });
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
         }
+        
+        alert("Test configuration saved successfully");
+        location.reload();
+    } catch (error) {
+        console.error('Failed to save test configuration:', error);
+        alert('Error saving test configuration: ' + error.message);
     }
 }
 
@@ -235,5 +290,47 @@ async function showConfig() {
     } catch (error) {
         console.error('Failed to fetch config:', error);
         document.getElementById('configContents').textContent = 'Error: ' + error.message;
+    }
+}
+
+// Save a minimal config file to get started
+window.createMinimalConfig = async function createMinimalConfig() {
+    try {
+        const minimalConfig = {
+            deviceName: "Thermostat",
+            updateInterval: 1000,
+            knxEnabled: false,
+            mqttEnabled: false,
+            web: {
+                username: "admin",
+                password: "admin"
+            },
+            pid: {
+                kp: 2.0,
+                ki: 0.5,
+                kd: 1.0,
+                minOutput: 0,
+                maxOutput: 100,
+                sampleTime: 30000
+            }
+        };
+        
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        
+        // Use a different endpoint that directly creates the file
+        const response = await fetch('/create_config', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            },
+            body: JSON.stringify(minimalConfig)
+        });
+        
+        alert("Created minimal config file");
+        location.reload();
+    } catch (error) {
+        console.error('Failed to create config:', error);
+        alert('Error creating config: ' + error.message);
     }
 }
