@@ -32,6 +32,7 @@ String HtmlGenerator::generateHeader(const String& csrfToken) {
     <title>KNX Thermostat V1.0</title>
     <!-- Load custom CSS from LittleFS -->
     <link rel='stylesheet' href='/style.css'>
+    <link rel='stylesheet' href='/style.css'>
 </head>
 <body>
 )";
@@ -285,155 +286,8 @@ String HtmlGenerator::generateFooter() {
     <footer>
         <p>&copy; 2025 Coolbox</p>
     </footer>
-    )" + generateScripts() + R"(
+    <script src="/scripts.js"></script>
     </body>
     </html>
     )";
-}
-
-String HtmlGenerator::generateStyles() {
-    return R"(
-<style>
-    body { padding-top: 20px; }
-    .section { margin-bottom: 30px; }
-    .card { margin-bottom: 20px; }
-    .navbar { margin-bottom: 20px; }
-</style>
-)";
-}
-
-String HtmlGenerator::generateScripts() {
-    return R"(
-<script>
-async function setSetpoint() {
-    const value = document.getElementById('setpoint').value;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    
-    await fetch('/setpoint', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRF-Token': csrfToken
-        },
-        body: `value=${value}`
-    });
-    location.reload();
-}
-
-async function setMode() {
-    const mode = document.getElementById('mode').value;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    
-    await fetch('/mode', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRF-Token': csrfToken
-        },
-        body: `mode=${mode}`
-    });
-    location.reload();
-}
-
-async function updateControl() {
-    const mode = document.getElementById('mode').value;
-    const setpoint = document.getElementById('setpoint').value;
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    
-    await fetch('/control', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-CSRF-Token': csrfToken
-        },
-        body: `mode=${mode}&setpoint=${setpoint}`
-    });
-    location.reload();
-}
-
-async function saveConfig() {
-    const form = document.getElementById('configForm');
-    const data = new FormData(form);
-    const json = Object.fromEntries(data.entries());
-    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
-    
-    try {
-        const response = await fetch('/save', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-Token': csrfToken || ''
-            },
-            body: JSON.stringify(json)
-        });
-        
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        try {
-            const result = await response.json();
-            if (result.status === "ok") {
-                alert("Configuration saved successfully");
-                location.reload();
-            } else {
-                alert("Error: " + (result.message || "Unknown error"));
-            }
-        } catch (jsonError) {
-            // Fall back to text response if JSON parsing fails
-            const text = await response.text();
-            alert("Configuration saved");
-            location.reload();
-        }
-    } catch (error) {
-        alert("Failed to save configuration: " + error.message);
-    }
-}
-
-async function updatePID() {
-    const data = {
-        kp: document.getElementById('kp').value,
-        ki: document.getElementById('ki').value,
-        kd: document.getElementById('kd').value,
-        active: document.getElementById('pidActive').checked
-    };
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    
-    await fetch('/pid', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': csrfToken
-        },
-        body: JSON.stringify(data)
-    });
-    location.reload();
-}
-
-async function factoryReset() {
-    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-    if (confirm('Are you sure you want to reset to factory defaults?')) {
-        await fetch('/reset', { 
-            method: 'POST',
-            headers: {
-                'X-CSRF-Token': csrfToken
-            }
-        });
-        location.reload();
-    }
-}
-
-// Auto-refresh status every 10 seconds
-setInterval(() => {
-    fetch('/status')
-        .then(response => response.json())
-        .then(data => {
-            // Update status values
-            document.querySelector('#status .temperature').textContent = data.temperature.toFixed(1) + '°C';
-            document.querySelector('#status .humidity').textContent = data.humidity.toFixed(1) + '%';
-            document.querySelector('#status .pressure').textContent = data.pressure.toFixed(1) + ' hPa';
-        });
-}, 10000);
-</script>
-)";
 }
