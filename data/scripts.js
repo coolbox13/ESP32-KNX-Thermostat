@@ -334,3 +334,33 @@ window.createMinimalConfig = async function createMinimalConfig() {
         alert('Error creating config: ' + error.message);
     }
 }
+
+async function factoryReset() {
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+        
+        const response = await fetch('/factory_reset', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-Token': csrfToken
+            }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        }
+
+        // Show success message
+        alert('Factory reset successful. The device will reboot.');
+        
+        // Optionally, reload the page after a short delay
+        setTimeout(() => {
+            window.location.reload();
+        }, 3000); // Reload after 3 seconds
+    } catch (error) {
+        console.error('Failed to perform factory reset:', error);
+        alert('Failed to perform factory reset: ' + error.message);
+    }
+}

@@ -1,0 +1,35 @@
+{
+    "deviceName": "Thermostat",
+    "updateInterval": 1000,
+    "knxEnabled": true,
+    "mqttEnabled": true,
+    "web": {
+      "username": "admin",
+      "password": "admin"
+    },
+    "knx": {
+      "enabled": true,
+      "physical": {
+        "area": 1,
+        "line": 1,
+        "member": 160
+      }
+    },
+    "mqtt": {
+      "enabled": true,
+      "server": "192.168.178.32",
+      "port": 1883,
+      "username": "",
+      "password": "",
+      "clientId": "esp32_thermostat",
+      "topicPrefix": "esp32/thermostat/"
+    },
+    "pid": {
+      "kp": 2.0,
+      "ki": 0.5,
+      "kd": 1.0,
+      "minOutput": 0,
+      "maxOutput": 100,
+      "sampleTime": 30000
+    }
+  }

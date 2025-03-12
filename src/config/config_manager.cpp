@@ -97,7 +97,7 @@ bool ConfigManager::loadConfig() {
     // Load KNX settings
     JsonObject knx = doc["knx"];
     if (knx) {
-        knxEnabled = knx["enabled"] | false;
+        knxEnabled = knx["enabled"] | true;
         JsonObject physical = knx["physical"];
         if (physical) {
             knxPhysicalAddress.area = physical["area"] | 1;
@@ -109,7 +109,7 @@ bool ConfigManager::loadConfig() {
     // Load MQTT settings
     JsonObject mqtt = doc["mqtt"];
     if (mqtt) {
-        mqttEnabled = mqtt["enabled"] | false;
+        mqttEnabled = mqtt["enabled"] | true;
         strlcpy(mqttServer, mqtt["server"] | "localhost", sizeof(mqttServer));
         mqttPort = mqtt["port"] | 1883;
         strlcpy(mqttUser, mqtt["username"] | "", sizeof(mqttUser));
