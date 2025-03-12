@@ -3,7 +3,6 @@
 <head>
     <meta charset='utf-8'>
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <meta name="csrf-token">
     <title>ESP32 KNX Thermostat</title>
     <style>
         body { font-family: Arial; padding: 20px; }
@@ -40,10 +39,7 @@
     <h2>Configuration</h2>
     <form id="configForm">
         <input type="hidden" name="_csrf" value="${csrfToken}">
-        Device Name: <input type="text" id="deviceName" name="deviceName" value="ESP32 Thermostat"><br><br>
-        Update Interval (ms): <input type="number" id="updateInterval" name="updateInterval" value="10000" min="1000" step="1000"><br><br>
-        KNX Address: <input type="text" id="knxAddress" name="knxAddress" pattern="\d{1,2}\.\d{1,2}\.\d{1,3}" value="1.1.1"><br><br>
-        <button type="button" onclick="saveConfig()">Save Configuration</button>
+        <!-- CONFIG_SECTION -->
     </form>
 
     <hr>
@@ -55,8 +51,6 @@
     <div id="errorLog" class="error"></div>
 
     <script>
-    const csrfToken = '${csrfToken}';  // This will be replaced by the server
-
     // Simple error logging function
     function logError(error) {
         console.error(error);
@@ -65,40 +59,42 @@
 
     // Basic fetch wrapper with error handling
     async function fetchWithError(url, options = {}) {
-        if (!options.headers) {
-            options.headers = {};
+        try {
+            const response = await fetch(url, options);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return await response.json();
+        } catch (error) {
+            logError(error);
+            throw error;
         }
-        options.headers['X-CSRF-TOKEN'] = csrfToken;
-        const response = await fetch(url, options);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response;
     }
 
     // Update status values
     async function updateStatus() {
         try {
-            const response = await fetchWithError('/status');
-            const data = await response.json();
-            
+            const data = await fetchWithError('/status');
             document.getElementById('temperature').textContent = data.temperature.toFixed(1);
             document.getElementById('humidity').textContent = data.humidity.toFixed(1);
             document.getElementById('pressure').textContent = data.pressure.toFixed(1);
-            document.getElementById('setpoint').value = data.setpoint.toFixed(1);
-            document.getElementById('mode').value = data.enabled ? 'on' : 'off';
-            
         } catch (error) {
-            console.error('Failed to update status:', error);
+            logError('Status update failed: ' + error);
         }
     }
 
     // Set temperature
-    async function setSetpoint(value) {
+    async function setSetpoint() {
         try {
-            await fetchWithError('/setpoint', {
+            const value = document.getElementById('setpoint').value;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            
+            await fetch('/setpoint', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-Token': csrfToken
+                },
                 body: `setpoint=${value}`
             });
             updateStatus();
@@ -108,28 +104,33 @@
     }
 
     // Set mode
-    async function setMode(mode) {
+    async function setMode() {
         try {
-            await fetchWithError('/mode', {
+            const mode = document.getElementById('mode').value;
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            
+            await fetch('/mode', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-CSRF-Token': csrfToken
                 },
                 body: `mode=${mode}`
             });
+            updateStatus();
         } catch (error) {
-            console.error('Failed to set mode:', error);
+            logError('Failed to set mode: ' + error);
         }
     }
 
     // Save configuration
     async function saveConfig() {
-        const form = document.getElementById('configForm');
-        const data = new FormData(form);
-        const json = Object.fromEntries(data.entries());
-        const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-        
         try {
+            const form = document.getElementById('configForm');
+            const data = new FormData(form);
+            const json = Object.fromEntries(data.entries());
+            const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+            
             const response = await fetch('/save', {
                 method: 'POST',
                 headers: {
@@ -143,34 +144,39 @@
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
-            const result = await response.json();
-            if (result.status === "ok") {
-                // Success - reload or show success message
-                alert("Configuration saved V1 successfully");
+            try {
+                const result = await response.json();
+                if (result.status === "ok") {
+                    alert("Configuration saved successfully");
+                    location.reload();
+                } else {
+                    alert("Error: " + (result.message || "Unknown error"));
+                }
+            } catch (jsonError) {
+                // Fall back to text response if JSON parsing fails
+                const text = await response.text();
+                alert("Configuration saved");
                 location.reload();
-            } else {
-                // Server returned an error
-                alert("Error: " + (result.message || "Unknown error"));
             }
         } catch (error) {
-            alert("Failed to save V1 configuration: " + error.message);
+            logError('Failed to save configuration: ' + error);
         }
     }
 
     // Factory reset
     async function factoryReset() {
-        if (confirm('Are you sure you want to reset to factory settings?')) {
+        if (confirm('Are you sure you want to reset to factory defaults?')) {
             try {
-                await fetchWithError('/factory-reset', {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+                await fetch('/reset', { 
                     method: 'POST',
                     headers: {
-                        'X-CSRF-TOKEN': csrfToken,
-                        'Content-Type': 'application/x-www-form-urlencoded'
+                        'X-CSRF-Token': csrfToken
                     }
                 });
-                alert('Factory reset initiated. Device will restart.');
+                location.reload();
             } catch (error) {
-                logError('Failed to initiate factory reset: ' + error);
+                logError('Failed to perform factory reset: ' + error);
             }
         }
     }
@@ -180,4 +186,4 @@
     setInterval(updateStatus, 10000);
     </script>
 </body>
-</html> 
+</html>

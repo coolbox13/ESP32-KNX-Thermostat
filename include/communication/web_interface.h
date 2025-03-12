@@ -29,7 +29,6 @@ public:
     void handleSave(AsyncWebServerRequest* request);
     void handleGetStatus(AsyncWebServerRequest* request);
     void handleSetpoint(AsyncWebServerRequest* request);
-    void handleSaveConfig(AsyncWebServerRequest* request);
     void handleReboot(AsyncWebServerRequest* request);
     void handleFactoryReset(AsyncWebServerRequest* request);
     void handleNotFound(AsyncWebServerRequest* request);

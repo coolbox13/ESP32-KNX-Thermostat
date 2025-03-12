@@ -88,113 +88,137 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
 
     if (!validateCSRFToken(request)) {
         ESP_LOGW(TAG, "Invalid CSRF token from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(403, "text/plain", "Invalid CSRF token");
+        request->send(403, "application/json", "{\"status\":\"error\",\"message\":\"Invalid CSRF token\"}");
         return;
     }
 
-    if (!configManager) {
-        ESP_LOGE(TAG, "Configuration manager not available");
-        request->send(500, "text/plain", "Configuration manager not available");
+    // Check if we're receiving form data or JSON
+    bool isFormData = request->contentType().equals("application/x-www-form-urlencoded");
+    bool isJsonData = request->contentType().equals("application/json");
+    
+    if (!isFormData && !isJsonData) {
+        ESP_LOGW(TAG, "Unsupported content type: %s", request->contentType().c_str());
+        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Unsupported content type\"}");
         return;
     }
-
-    // Handle device name
+    
+    // Process device settings
     if (request->hasParam("deviceName", true)) {
         configManager->setDeviceName(request->getParam("deviceName", true)->value().c_str());
         ESP_LOGI(TAG, "Device name updated to: %s", request->getParam("deviceName", true)->value().c_str());
-    }
-
-    // Handle send interval
-    if (request->hasParam("sendInterval", true)) {
-        uint32_t interval = request->getParam("sendInterval", true)->value().toInt();
-        if (interval > 0) {
-            sensorInterface->setUpdateInterval(interval);
-            ESP_LOGI(TAG, "Send interval updated to: %u ms", interval);
+    } else if (isJsonData && request->hasParam("plain", true)) {
+        // Process JSON data
+        String jsonData = request->getParam("plain", true)->value();
+        StaticJsonDocument<1024> doc;
+        DeserializationError error = deserializeJson(doc, jsonData);
+        
+        if (error) {
+            ESP_LOGW(TAG, "Invalid JSON from IP: %s", request->client()->remoteIP().toString().c_str());
+            request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid JSON\"}");
+            return;
+        }
+        
+        // Process device name from JSON
+        if (doc.containsKey("deviceName")) {
+            configManager->setDeviceName(doc["deviceName"]);
+            ESP_LOGI(TAG, "Device name updated to: %s", doc["deviceName"].as<const char*>());
+        }
+        
+        // Process update interval
+        if (doc.containsKey("updateInterval")) {
+            configManager->setSendInterval(doc["updateInterval"]);
+            ESP_LOGI(TAG, "Update interval set to: %lu", doc["updateInterval"].as<unsigned long>());
+        }
+        
+        // Process KNX address
+        if (doc.containsKey("knxAddress")) {
+            String addr = doc["knxAddress"];
+            // Parse KNX address (format: area.line.member)
+            int firstDot = addr.indexOf('.');
+            int secondDot = addr.indexOf('.', firstDot + 1);
+            
+            if (firstDot > 0 && secondDot > firstDot) {
+                uint8_t area = addr.substring(0, firstDot).toInt();
+                uint8_t line = addr.substring(firstDot + 1, secondDot).toInt();
+                uint8_t member = addr.substring(secondDot + 1).toInt();
+                
+                configManager->setKnxPhysicalAddress(area, line, member);
+                ESP_LOGI(TAG, "KNX address set to: %d.%d.%d", area, line, member);
+            }
+        }
+        
+        // Process KNX enabled flag
+        if (doc.containsKey("knxEnabled")) {
+            configManager->setKnxEnabled(doc["knxEnabled"]);
+            ESP_LOGI(TAG, "KNX %s", doc["knxEnabled"].as<bool>() ? "enabled" : "disabled");
+        }
+        
+        // Process MQTT settings
+        if (doc.containsKey("mqttEnabled")) {
+            configManager->setMQTTEnabled(doc["mqttEnabled"]);
+            ESP_LOGI(TAG, "MQTT %s", doc["mqttEnabled"].as<bool>() ? "enabled" : "disabled");
+        }
+        
+        if (doc.containsKey("mqttServer")) {
+            configManager->setMQTTServer(doc["mqttServer"]);
+            ESP_LOGI(TAG, "MQTT server set to: %s", doc["mqttServer"].as<const char*>());
+        }
+        
+        if (doc.containsKey("mqttPort")) {
+            configManager->setMQTTPort(doc["mqttPort"]);
+            ESP_LOGI(TAG, "MQTT port set to: %d", doc["mqttPort"].as<uint16_t>());
+        }
+        
+        if (doc.containsKey("mqttUser")) {
+            configManager->setMQTTUser(doc["mqttUser"]);
+        }
+        
+        if (doc.containsKey("mqttPassword")) {
+            configManager->setMQTTPassword(doc["mqttPassword"]);
+        }
+        
+        if (doc.containsKey("mqttClientId")) {
+            configManager->setMQTTClientId(doc["mqttClientId"]);
+        }
+        
+        if (doc.containsKey("mqttTopicPrefix")) {
+            configManager->setMQTTTopicPrefix(doc["mqttTopicPrefix"]);
         }
     }
-
-    // Handle PID interval
-    if (request->hasParam("pidInterval", true)) {
-        uint32_t interval = request->getParam("pidInterval", true)->value().toInt();
-        if (interval > 0) {
-            pidController->setUpdateInterval(interval);
-            ESP_LOGI(TAG, "PID interval updated to: %u ms", interval);
+    
+    // Process form data
+    if (isFormData) {
+        if (request->hasParam("updateInterval", true)) {
+            uint32_t interval = request->getParam("updateInterval", true)->value().toInt();
+            if (interval > 0) {
+                configManager->setSendInterval(interval);
+                ESP_LOGI(TAG, "Update interval set to: %u ms", interval);
+            }
+        }
+        
+        if (request->hasParam("knxAddress", true)) {
+            String addr = request->getParam("knxAddress", true)->value();
+            // Parse KNX address (format: area.line.member)
+            int firstDot = addr.indexOf('.');
+            int secondDot = addr.indexOf('.', firstDot + 1);
+            
+            if (firstDot > 0 && secondDot > firstDot) {
+                uint8_t area = addr.substring(0, firstDot).toInt();
+                uint8_t line = addr.substring(firstDot + 1, secondDot).toInt();
+                uint8_t member = addr.substring(secondDot + 1).toInt();
+                
+                configManager->setKnxPhysicalAddress(area, line, member);
+                ESP_LOGI(TAG, "KNX address set to: %d.%d.%d", area, line, member);
+            }
         }
     }
-
-    // Handle KNX settings
-    if (request->hasParam("knxArea", true) && request->hasParam("knxLine", true) && request->hasParam("knxMember", true)) {
-        uint8_t area = request->getParam("knxArea", true)->value().toInt();
-        uint8_t line = request->getParam("knxLine", true)->value().toInt();
-        uint8_t member = request->getParam("knxMember", true)->value().toInt();
-        configManager->setKnxPhysicalAddress(area, line, member);
-        ESP_LOGI(TAG, "KNX physical address updated to: %u.%u.%u", area, line, member);
-    }
-
-    configManager->setKnxEnabled(request->hasParam("knxEnabled", true));
-    ESP_LOGI(TAG, "KNX %s", request->hasParam("knxEnabled", true) ? "enabled" : "disabled");
-
-    // Handle KNX temperature GA
-    if (request->hasParam("knxTempArea", true) && request->hasParam("knxTempLine", true) && request->hasParam("knxTempMember", true)) {
-        uint8_t area = request->getParam("knxTempArea", true)->value().toInt();
-        uint8_t line = request->getParam("knxTempLine", true)->value().toInt();
-        uint8_t member = request->getParam("knxTempMember", true)->value().toInt();
-        configManager->setKnxTemperatureGA(area, line, member);
-    }
-
-    // Handle KNX setpoint GA
-    if (request->hasParam("knxSetpointArea", true) && request->hasParam("knxSetpointLine", true) && request->hasParam("knxSetpointMember", true)) {
-        uint8_t area = request->getParam("knxSetpointArea", true)->value().toInt();
-        uint8_t line = request->getParam("knxSetpointLine", true)->value().toInt();
-        uint8_t member = request->getParam("knxSetpointMember", true)->value().toInt();
-        configManager->setKnxSetpointGA(area, line, member);
-    }
-
-    // Handle KNX valve GA
-    if (request->hasParam("knxValveArea", true) && request->hasParam("knxValveLine", true) && request->hasParam("knxValveMember", true)) {
-        uint8_t area = request->getParam("knxValveArea", true)->value().toInt();
-        uint8_t line = request->getParam("knxValveLine", true)->value().toInt();
-        uint8_t member = request->getParam("knxValveMember", true)->value().toInt();
-        configManager->setKnxValveGA(area, line, member);
-    }
-
-    // Handle KNX mode GA
-    if (request->hasParam("knxModeArea", true) && request->hasParam("knxModeLine", true) && request->hasParam("knxModeMember", true)) {
-        uint8_t area = request->getParam("knxModeArea", true)->value().toInt();
-        uint8_t line = request->getParam("knxModeLine", true)->value().toInt();
-        uint8_t member = request->getParam("knxModeMember", true)->value().toInt();
-        configManager->setKnxModeGA(area, line, member);
-    }
-
-    // Handle MQTT settings
-    configManager->setMQTTEnabled(request->hasParam("mqttEnabled", true));
-
-    if (request->hasParam("mqttServer", true)) {
-        configManager->setMQTTServer(request->getParam("mqttServer", true)->value().c_str());
-    }
-
-    if (request->hasParam("mqttPort", true)) {
-        uint16_t port = request->getParam("mqttPort", true)->value().toInt();
-        configManager->setMQTTPort(port);
-    }
-
-    if (request->hasParam("mqttUser", true)) {
-        configManager->setMQTTUser(request->getParam("mqttUser", true)->value().c_str());
-    }
-
-    if (request->hasParam("mqttPassword", true)) {
-        configManager->setMQTTPassword(request->getParam("mqttPassword", true)->value().c_str());
-    }
-
-    if (request->hasParam("mqttClientId", true)) {
-        configManager->setMQTTClientId(request->getParam("mqttClientId", true)->value().c_str());
-    }
-
-    // Save configuration
+    
+    // Save configuration to file
     configManager->saveConfig();
     ESP_LOGI(TAG, "Configuration saved successfully");
-
-    request->send(200, "text/plain", "Settings saved");
+    
+    // Return a JSON response
+    request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Configuration saved\"}");
 }
 
 void WebInterface::handleGetStatus(AsyncWebServerRequest *request) {
@@ -251,48 +275,6 @@ void WebInterface::handleSetpoint(AsyncWebServerRequest *request) {
     ESP_LOGI(TAG, "Setpoint updated to: %.1f°C", setpoint);
 
     request->send(200, "text/plain", "Setpoint updated");
-}
-
-void WebInterface::handleSaveConfig(AsyncWebServerRequest *request) {
-    if (!isAuthenticated(request)) {
-        requestAuthentication(request);
-        return;
-    }
-
-    if (!validateCSRFToken(request)) {
-        ESP_LOGW(TAG, "Invalid CSRF token from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(403, "application/json", "{\"status\":\"error\",\"message\":\"Invalid CSRF token\"}");
-        return;
-    }
-
-    if (!request->hasParam("plain", true)) {
-        ESP_LOGW(TAG, "Missing configuration data from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Missing configuration data\"}");
-        return;
-    }
-
-    String json = request->getParam("plain", true)->value();
-    StaticJsonDocument<1024> doc;
-    DeserializationError error = deserializeJson(doc, json);
-
-    if (error) {
-        ESP_LOGW(TAG, "Invalid JSON from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Invalid JSON\"}");
-        return;
-    }
-
-    // Apply configuration
-    if (doc.containsKey("deviceName")) {
-        configManager->setDeviceName(doc["deviceName"]);
-        ESP_LOGI(TAG, "Device name updated to: %s", doc["deviceName"].as<const char*>());
-    }
-
-    // Save configuration
-    configManager->saveConfig();
-    ESP_LOGI(TAG, "Configuration saved successfully");
-
-    // Return a JSON response instead of plain text
-    request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Configuration saved\"}");
 }
 
 void WebInterface::handleReboot(AsyncWebServerRequest *request) {
