@@ -230,6 +230,75 @@ void WebInterface::handleSetpoint(AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "Setpoint updated");
 }
 
+void WebInterface::handlePID(AsyncWebServerRequest* request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
+        return;
+    }
+
+    if (!validateCSRFToken(request)) {
+        ESP_LOGW(TAG, "Invalid CSRF token from IP: %s", request->client()->remoteIP().toString().c_str());
+        request->send(403, "text/plain", "Invalid CSRF token");
+        return;
+    }
+
+    if (!request->hasParam("plain", true)) {
+        ESP_LOGW(TAG, "Missing JSON data from IP: %s", request->client()->remoteIP().toString().c_str());
+        request->send(400, "text/plain", "Missing JSON data");
+        return;
+    }
+
+    String jsonData = request->getParam("plain", true)->value();
+    StaticJsonDocument<256> doc;
+    DeserializationError error = deserializeJson(doc, jsonData);
+    
+    if (error) {
+        ESP_LOGW(TAG, "Invalid JSON from IP: %s - %s", 
+                 request->client()->remoteIP().toString().c_str(), error.c_str());
+        request->send(400, "text/plain", "Invalid JSON data");
+        return;
+    }
+    
+    bool updated = false;
+    
+    if (doc.containsKey("kp") && pidController) {
+        float kp = doc["kp"].as<float>();
+        pidController->setKp(kp);
+        updated = true;
+        ESP_LOGI(TAG, "PID Kp updated to: %.2f", kp);
+    }
+    
+    if (doc.containsKey("ki") && pidController) {
+        float ki = doc["ki"].as<float>();
+        pidController->setKi(ki);
+        updated = true;
+        ESP_LOGI(TAG, "PID Ki updated to: %.2f", ki);
+    }
+    
+    if (doc.containsKey("kd") && pidController) {
+        float kd = doc["kd"].as<float>();
+        pidController->setKd(kd);
+        updated = true;
+        ESP_LOGI(TAG, "PID Kd updated to: %.2f", kd);
+    }
+    
+    if (doc.containsKey("active") && pidController) {
+        bool active = doc["active"].as<bool>();
+        pidController->setActive(active);
+        updated = true;
+        ESP_LOGI(TAG, "PID active state set to: %s", active ? "true" : "false");
+    }
+    
+    if (!updated) {
+        ESP_LOGW(TAG, "No valid PID parameters found in request from IP: %s", 
+                 request->client()->remoteIP().toString().c_str());
+        request->send(400, "text/plain", "No valid PID parameters provided");
+        return;
+    }
+    
+    request->send(200, "application/json", "{\"status\":\"ok\"}");
+}
+
 void WebInterface::handleReboot(AsyncWebServerRequest *request) {
     if (!isAuthenticated(request)) {
         requestAuthentication(request);

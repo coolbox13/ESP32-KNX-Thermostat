@@ -236,7 +236,7 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config, const Strin
 String HtmlGenerator::generatePIDSection(ControlInterface* control, const String& csrfToken) {
     if (!control) return "";
     
-    char buf[1024];
+    char buf[2024];
     snprintf(buf, sizeof(buf), R"PID(
 <div id="pid" class="section">
     <h2>PID Control</h2>
