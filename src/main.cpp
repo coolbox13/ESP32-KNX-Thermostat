@@ -53,9 +53,9 @@ void setup() {
     // List files in LittleFS
     webInterface.listFiles();
     
-    // Initialize configuration
+    // Initialize ConfigManager
     if (!configManager.begin()) {
-        Serial.println("Failed to initialize configuration");
+        ESP_LOGE(TAG, "Failed to initialize configuration");
         return;
     }
 

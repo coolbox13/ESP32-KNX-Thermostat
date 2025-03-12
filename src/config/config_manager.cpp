@@ -54,16 +54,18 @@ ConfigManager::ConfigManager() {
 }
 
 bool ConfigManager::begin() {
+    // Initialize LittleFS
     if (!LittleFS.begin(true)) {
         ESP_LOGE(TAG, "Failed to mount file system");
+        lastError = ThermostatStatus::ERROR_FILESYSTEM;
         return false;
     }
+
+    // Load the configuration
     return loadConfig();
 }
 
 bool ConfigManager::loadConfig() {
-    // Note: LittleFS is now initialized in main.cpp
-    
     // Try to open the config file
     File configFile = LittleFS.open("/config.json", "r");
     if (!configFile) {
@@ -72,6 +74,7 @@ bool ConfigManager::loadConfig() {
         return false;
     }
 
+    // Parse the JSON document
     StaticJsonDocument<1024> doc;
     DeserializationError error = deserializeJson(doc, configFile);
     configFile.close();

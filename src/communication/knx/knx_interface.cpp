@@ -67,7 +67,7 @@ public:
             // Direct access without conversion to JsonObject
             uint8_t area = 1;    // Default value
             uint8_t line = 1;    // Default value
-            uint8_t member = 1;  // Default value
+            uint8_t member = 160;  // Default value
             
             // Read values if they exist
             if (config["physical"].containsKey("area")) {
@@ -92,7 +92,7 @@ public:
             if (config["ga"].containsKey("temperature")) {
                 uint8_t main = config["ga"]["temperature"]["main"] | 0;
                 uint8_t middle = config["ga"]["temperature"]["middle"] | 0;
-                uint8_t sub = config["ga"]["temperature"]["sub"] | 0;
+                uint8_t sub = config["ga"]["temperature"]["sub"] | 3;
                 address_t addr = knx.GA_to_address(main, middle, sub);
                 groupAddresses["temperature"] = addr;
                 ESP_LOGI(TAG, "Added temperature group address: %d/%d/%d", main, middle, sub);
@@ -101,7 +101,7 @@ public:
             if (config["ga"].containsKey("humidity")) {
                 uint8_t main = config["ga"]["humidity"]["main"] | 0;
                 uint8_t middle = config["ga"]["humidity"]["middle"] | 0;
-                uint8_t sub = config["ga"]["humidity"]["sub"] | 0;
+                uint8_t sub = config["ga"]["humidity"]["sub"] | 4;
                 address_t addr = knx.GA_to_address(main, middle, sub);
                 groupAddresses["humidity"] = addr;
                 ESP_LOGI(TAG, "Added humidity group address: %d/%d/%d", main, middle, sub);
@@ -110,7 +110,7 @@ public:
             if (config["ga"].containsKey("pressure")) {
                 uint8_t main = config["ga"]["pressure"]["main"] | 0;
                 uint8_t middle = config["ga"]["pressure"]["middle"] | 0;
-                uint8_t sub = config["ga"]["pressure"]["sub"] | 0;
+                uint8_t sub = config["ga"]["pressure"]["sub"] | 5;
                 address_t addr = knx.GA_to_address(main, middle, sub);
                 groupAddresses["pressure"] = addr;
                 ESP_LOGI(TAG, "Added pressure group address: %d/%d/%d", main, middle, sub);
@@ -119,7 +119,7 @@ public:
             if (config["ga"].containsKey("setpoint")) {
                 uint8_t main = config["ga"]["setpoint"]["main"] | 0;
                 uint8_t middle = config["ga"]["setpoint"]["middle"] | 0;
-                uint8_t sub = config["ga"]["setpoint"]["sub"] | 0;
+                uint8_t sub = config["ga"]["setpoint"]["sub"] | 6;
                 address_t addr = knx.GA_to_address(main, middle, sub);
                 groupAddresses["setpoint"] = addr;
                 ESP_LOGI(TAG, "Added setpoint group address: %d/%d/%d", main, middle, sub);
@@ -128,7 +128,7 @@ public:
             if (config["ga"].containsKey("valve")) {
                 uint8_t main = config["ga"]["valve"]["main"] | 0;
                 uint8_t middle = config["ga"]["valve"]["middle"] | 0;
-                uint8_t sub = config["ga"]["valve"]["sub"] | 0;
+                uint8_t sub = config["ga"]["valve"]["sub"] | 7;
                 address_t addr = knx.GA_to_address(main, middle, sub);
                 groupAddresses["valve"] = addr;
                 ESP_LOGI(TAG, "Added valve group address: %d/%d/%d", main, middle, sub);
@@ -136,7 +136,7 @@ public:
             
             if (config["ga"].containsKey("mode")) {
                 uint8_t main = config["ga"]["mode"]["main"] | 0;
-                uint8_t middle = config["ga"]["mode"]["middle"] | 0;
+                uint8_t middle = config["ga"]["mode"]["middle"] | 1;
                 uint8_t sub = config["ga"]["mode"]["sub"] | 0;
                 address_t addr = knx.GA_to_address(main, middle, sub);
                 groupAddresses["mode"] = addr;
@@ -145,8 +145,8 @@ public:
             
             if (config["ga"].containsKey("heating")) {
                 uint8_t main = config["ga"]["heating"]["main"] | 0;
-                uint8_t middle = config["ga"]["heating"]["middle"] | 0;
-                uint8_t sub = config["ga"]["heating"]["sub"] | 0;
+                uint8_t middle = config["ga"]["heating"]["middle"] | 1;
+                uint8_t sub = config["ga"]["heating"]["sub"] | 1;
                 address_t addr = knx.GA_to_address(main, middle, sub);
                 groupAddresses["heating"] = addr;
                 ESP_LOGI(TAG, "Added heating group address: %d/%d/%d", main, middle, sub);
