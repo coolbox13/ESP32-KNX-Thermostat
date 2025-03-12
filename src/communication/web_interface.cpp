@@ -5,6 +5,7 @@
 #include "web/base64.h"
 #include "interfaces/sensor_interface.h"
 #include "web/elegant_ota_async.h"
+#include <ArduinoJson.h>
 
 static const char* TAG = "WebInterface";
 
@@ -233,9 +234,25 @@ void WebInterface::handleGetConfig(AsyncWebServerRequest *request) {
     }
 
     size_t size = configFile.size();
-    std::unique_ptr<char[]> buf(new char[size]);
+    std::unique_ptr<char[]> buf(new char[size + 1]); // +1 for null terminator
     configFile.readBytes(buf.get(), size);
     configFile.close();
 
+    // Null-terminate the buffer
+    buf[size] = '\0';
+
+    // Log the JSON content
+    Serial.printf("[WebInterface] Config file content: %s\n", buf.get());
+
+    // Validate JSON
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, buf.get());
+    if (error) {
+        Serial.printf("[WebInterface] Invalid JSON in config file: %s\n", error.c_str());
+        request->send(500, "text/plain", "Invalid JSON in config file");
+        return;
+    }
+
+    // Send the JSON response
     request->send(200, "application/json", buf.get());
 }
