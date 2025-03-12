@@ -182,6 +182,9 @@ window.updatePID = async function updatePID() {
         location.reload();
 
         alert('PID parameters updated successfully');
+        
+        // Optionally, update the UI dynamically
+        updateUIWithCurrentConfig();
     } catch (error) {
         logError('Failed to update PID: ' + error);
         // Log the error to the console
@@ -192,6 +195,39 @@ window.updatePID = async function updatePID() {
     }
 }
 
+async function updateUIWithCurrentConfig() {
+    try {
+        const response = await fetch('/config');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const config = await response.json();
+        
+        // Update the UI with the new configuration
+        document.getElementById('kp').value = config.pid.kp;
+        document.getElementById('ki').value = config.pid.ki;
+        document.getElementById('kd').value = config.pid.kd;
+        document.getElementById('pidActive').checked = config.pid.active;
+    } catch (error) {
+        logError('Failed to update UI: ' + error);
+    }
+}
+
 // Initial status update and periodic refresh
 updateStatus();
 setInterval(updateStatus, 10000);
+
+async function showConfig() {
+    try {
+        const response = await fetch('/config');
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const config = await response.json();
+        document.getElementById('configContents').textContent = JSON.stringify(config, null, 2);
+    } catch (error) {
+        logError('Failed to fetch config: ' + error);
+    }
+}

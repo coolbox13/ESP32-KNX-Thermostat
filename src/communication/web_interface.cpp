@@ -44,7 +44,7 @@ bool WebInterface::begin() {
         server.on("/pid", HTTP_POST, std::bind(&WebInterface::handlePID, this, std::placeholders::_1));
         server.on("/reboot", HTTP_POST, std::bind(&WebInterface::handleReboot, this, std::placeholders::_1));
         server.on("/factory_reset", HTTP_POST, std::bind(&WebInterface::handleFactoryReset, this, std::placeholders::_1));
-        
+        server.on("/config", HTTP_GET, std::bind(&WebInterface::handleGetConfig, this, std::placeholders::_1));
         // Set up MDNS for easy access
         setupMDNS();
         
@@ -218,4 +218,24 @@ String WebInterface::generateCSRFToken(AsyncWebServerRequest* request) {
     request->_tempObject = strdup(token.c_str());
     
     return token;
+}
+
+void WebInterface::handleGetConfig(AsyncWebServerRequest *request) {
+    if (!isAuthenticated(request)) {
+        requestAuthentication(request);
+        return;
+    }
+
+    File configFile = LittleFS.open("/config.json", "r");
+    if (!configFile) {
+        request->send(500, "text/plain", "Failed to open config file");
+        return;
+    }
+
+    size_t size = configFile.size();
+    std::unique_ptr<char[]> buf(new char[size]);
+    configFile.readBytes(buf.get(), size);
+    configFile.close();
+
+    request->send(200, "application/json", buf.get());
 }

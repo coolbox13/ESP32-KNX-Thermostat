@@ -34,6 +34,7 @@ public:
     void handleNotFound(AsyncWebServerRequest* request);
     void handleMode(AsyncWebServerRequest* request);
     void handlePID(AsyncWebServerRequest* request);
+    void handleGetConfig(AsyncWebServerRequest *request);
 
     
     // Utility methods

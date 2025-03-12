@@ -225,7 +225,9 @@ String HtmlGenerator::generateConfigSection(ConfigInterface* config, const Strin
     // Action buttons
     html += "        <button type='button' class='btn btn-primary' onclick='saveConfig()'>Save Configuration</button>\n";
     html += "        <button type='button' class='btn btn-danger ms-2' onclick='factoryReset()'>Factory Reset</button>\n";
+    html += "        <button type='button' class='btn btn-info ms-2' onclick='showConfig()'>Show Config</button>\n";
     html += "      </form>\n";
+    html += "      <pre id='configContents' class='mt-3'></pre>\n";
     html += "    </div>\n";
     html += "  </div>\n";
     html += "</div>\n";

@@ -136,22 +136,30 @@ bool ConfigManager::saveConfig() {
     ESP_LOGI(TAG, "Attempting to save configuration...");
     
     // Create JSON document
-    StaticJsonDocument<2048> doc;  // Increase size if necessary
-    ESP_LOGI(TAG, "Created JSON document");
+    StaticJsonDocument<2048> doc;
+    ESP_LOGI(TAG, "Created JSON document");  // Add this log
     
     // Populate JSON document
-    doc["deviceName"] = deviceName;
-    doc["updateInterval"] = updateInterval;
-    doc["knxAddress"] = String(knxArea) + "." + String(knxLine) + "." + String(knxMember);
-    doc["knxEnabled"] = knxEnabled;
-    doc["mqttEnabled"] = mqttEnabled;
-    doc["mqttServer"] = mqttServer;
-    doc["mqttPort"] = mqttPort;
-    doc["mqttUser"] = mqttUser;
-    doc["mqttPassword"] = mqttPassword;
-    doc["mqttClientId"] = mqttClientId;
-    doc["mqttTopicPrefix"] = mqttTopicPrefix;
-    ESP_LOGI(TAG, "Populated JSON document");
+    doc["web_username"] = webUsername;
+    doc["web_password"] = webPassword;
+    doc["knx_enabled"] = knxEnabled;
+    doc["knx_physical_area"] = knxPhysicalAddress.area;
+    doc["knx_physical_line"] = knxPhysicalAddress.line;
+    doc["knx_physical_member"] = knxPhysicalAddress.member;
+    doc["mqtt_enabled"] = mqttEnabled;
+    doc["mqtt_server"] = mqttServer;
+    doc["mqtt_port"] = mqttPort;
+    doc["mqtt_username"] = mqttUser;
+    doc["mqtt_password"] = mqttPassword;
+    doc["mqtt_clientId"] = mqttClientId;
+    doc["mqtt_topicPrefix"] = mqttTopicPrefix;
+    doc["pid_kp"] = pidConfig.kp;
+    doc["pid_ki"] = pidConfig.ki;
+    doc["pid_kd"] = pidConfig.kd;
+    doc["pid_minOutput"] = pidConfig.minOutput;
+    doc["pid_maxOutput"] = pidConfig.maxOutput;
+    doc["pid_sampleTime"] = pidConfig.sampleTime;
+    ESP_LOGI(TAG, "Populated JSON document");  // Add this log
     
     // Open config file for writing
     File configFile = LittleFS.open("/config.json", "w");
@@ -162,12 +170,10 @@ bool ConfigManager::saveConfig() {
     ESP_LOGI(TAG, "Opened config file for writing");
     
     // Serialize JSON to file
-    String jsonStr;
-    serializeJson(doc, jsonStr);
-    ESP_LOGI(TAG, "JSON to save: %s", jsonStr.c_str());
-    
-    if (jsonStr.length() > 0) {
-        configFile.write(jsonStr.c_str(), jsonStr.length());
+    if (serializeJson(doc, configFile) == 0) {
+        ESP_LOGE(TAG, "Failed to write config file");
+        configFile.close();
+        return false;
     }
     ESP_LOGI(TAG, "Serialized JSON to file");
     
@@ -200,7 +206,7 @@ void ConfigManager::resetToDefaults() {
     
     // Reset MQTT settings
     mqttEnabled = false;
-    strlcpy(mqttServer, "localhost", sizeof(mqttServer));
+    strlcpy(mqttServer, "192.168.178.32", sizeof(mqttServer));
     mqttPort = 1883;
     strlcpy(mqttUser, "", sizeof(mqttUser));
     strlcpy(mqttPassword, "", sizeof(mqttPassword));
