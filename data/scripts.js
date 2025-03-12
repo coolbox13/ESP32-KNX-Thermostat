@@ -37,7 +37,7 @@ async function updateStatus() {
 }
 
 // Set temperature
-async function setSetpoint() {
+window.setSetpoint = async function setSetpoint() {
     try {
         const value = document.getElementById('setpoint').value;
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -57,7 +57,7 @@ async function setSetpoint() {
 }
 
 // Set mode
-async function setMode() {
+window.setMode = async function setMode() {
     try {
         const mode = document.getElementById('mode').value;
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -77,7 +77,7 @@ async function setMode() {
 }
 
 // Save configuration
-async function saveConfig() {
+window.saveConfig = async function saveConfig() {
     try {
         const form = document.getElementById('configForm');
         const data = new FormData(form);
@@ -117,7 +117,7 @@ async function saveConfig() {
 }
 
 // Factory reset
-async function factoryReset() {
+window.factoryReset = async function factoryReset() {
     if (confirm('Are you sure you want to reset to factory defaults?')) {
         try {
             const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
@@ -136,7 +136,7 @@ async function factoryReset() {
 }
 
 // (Optional) Example updatePID function if needed
-async function updatePID() {
+window.updatePID = async function updatePID() {
     try {
         const kp = document.getElementById('kp').value;
         const ki = document.getElementById('ki').value;

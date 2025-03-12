@@ -137,6 +137,13 @@ select {
     gap: 2rem;
     margin-bottom: 2rem;
 }
+.footer {
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
 
 /* Media queries for responsiveness */
 @media (max-width: 768px) {
