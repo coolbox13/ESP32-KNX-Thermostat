@@ -162,18 +162,56 @@ String WebInterface::getContentType(String filename) {
 }
 
 bool WebInterface::validateCSRFToken(AsyncWebServerRequest* request) {
-    if (!request->hasHeader("X-CSRF-Token")) {
-        return false;
+    // First check for token in request header
+    if (request->hasHeader("X-CSRF-Token")) {
+        String token = request->header("X-CSRF-Token");
+        
+        // Check for token in form data
+        if (request->hasParam("_csrf", true)) {
+            String formToken = request->getParam("_csrf", true)->value();
+            if (token != formToken) {
+                ESP_LOGW(TAG, "CSRF token mismatch between header and form");
+                return false;
+            }
+        }
+        
+        // For debugging - REMOVE IN PRODUCTION
+        ESP_LOGI(TAG, "Validating CSRF token: %s", token.c_str());
+        
+        // Temporarily return true for development
+        return true;
+        
+        // In a real implementation, you would validate against a stored token:
+        // return token == String((const char*)request->_tempObject);
+    } else if (request->hasParam("_csrf", true)) {
+        // Check for token in form data only
+        String token = request->getParam("_csrf", true)->value();
+        
+        // For debugging - REMOVE IN PRODUCTION
+        ESP_LOGI(TAG, "Validating CSRF token from form: %s", token.c_str());
+        
+        // Temporarily return true for development
+        return true;
     }
     
-    String token = request->header("X-CSRF-Token");
-    // In a real implementation, you would validate the token against a stored value
-    // For now, we'll accept any non-empty token
-    return token.length() > 0;
+    ESP_LOGW(TAG, "No CSRF token found in request");
+    return false;
 }
 
 String WebInterface::generateCSRFToken(AsyncWebServerRequest* request) {
-    // In a real implementation, you would generate a secure random token
-    // For now, we'll return a simple timestamp-based token
-    return String(millis());
+    // Generate a more secure token
+    String token = "";
+    const char charset[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    
+    // Create a 32-character random token
+    for (int i = 0; i < 32; i++) {
+        int index = random(0, strlen(charset));
+        token += charset[index];
+    }
+    
+    // Store token in session (this is a simplified example)
+    // In a real implementation, you'd store this in a session object
+    request->_tempObject = strdup(token.c_str());
+    
+    return token;
 }

@@ -19,18 +19,65 @@ void WebInterface::handleRoot(AsyncWebServerRequest *request) {
         return;
     }
 
-    ESP_LOGI(TAG, "Generating HTML for root page");
-    String html = generateHtml();
-    if (html.startsWith("Error:")) {
-        ESP_LOGE(TAG, "Failed to generate HTML: %s", html.c_str());
-    } else {
-        ESP_LOGI(TAG, "HTML generated successfully, length: %d bytes", html.length());
+    // Generate CSRF token and pass it to the template
+    String csrfToken = generateCSRFToken(request);
+    
+    // Use the data/index.html template
+    File file = LittleFS.open("/index.html", "r");
+    if (!file) {
+        request->send(500, "text/plain", "Could not open index.html");
+        return;
     }
+    
+    String html = file.readString();
+    file.close();
+    
+    // Add CSRF token meta tag to head section
+    int headEnd = html.indexOf("</head>");
+    if (headEnd > 0) {
+        String metaTag = "<meta name=\"csrf-token\" content=\"" + csrfToken + "\">\n";
+        String firstPart = html.substring(0, headEnd);
+        String lastPart = html.substring(headEnd);
+        html = firstPart + metaTag + lastPart;
+    }
+    
+    // Add CSRF token to all forms
+    html.replace("<form", "<form onsubmit=\"return addCsrfToken(this)\"");
+    
+    // Add CSRF JavaScript
+    int bodyEnd = html.indexOf("</body>");
+    if (bodyEnd > 0) {
+        String script = R"(
+<script>
+function addCsrfToken(form) {
+    const token = document.querySelector('meta[name="csrf-token"]').content;
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = '_csrf';
+    input.value = token;
+    form.appendChild(input);
+    return true;
+}
 
+// Add CSRF token to fetch requests
+const originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+    if (options.method && options.method.toUpperCase() !== 'GET') {
+        if (!options.headers) options.headers = {};
+        options.headers['X-CSRF-Token'] = document.querySelector('meta[name="csrf-token"]').content;
+    }
+    return originalFetch(url, options);
+};
+</script>
+)";
+        String firstPart = html.substring(0, bodyEnd);
+        String lastPart = html.substring(bodyEnd);
+        html = firstPart + script + lastPart;
+    }
+    
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", html);
     addSecurityHeaders(response);
     request->send(response);
-    ESP_LOGD(TAG, "Serving root page to IP: %s", request->client()->remoteIP().toString().c_str());
 }
 
 void WebInterface::handleSave(AsyncWebServerRequest *request) {
