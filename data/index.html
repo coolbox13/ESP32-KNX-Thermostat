@@ -146,14 +146,14 @@
             const result = await response.json();
             if (result.status === "ok") {
                 // Success - reload or show success message
-                alert("Configuration saved successfully");
+                alert("Configuration saved V1 successfully");
                 location.reload();
             } else {
                 // Server returned an error
                 alert("Error: " + (result.message || "Unknown error"));
             }
         } catch (error) {
-            alert("Failed to save configuration: " + error.message);
+            alert("Failed to save V1 configuration: " + error.message);
         }
     }
 
