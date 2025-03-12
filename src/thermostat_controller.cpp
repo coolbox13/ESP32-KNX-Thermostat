@@ -1,7 +1,7 @@
 #include "thermostat_controller.h"
 #include "thermostat_state.h"
-#include "interfaces/sensor_interface.h"
-#include "interfaces/control_interface.h"
+#include "sensor_interface.h"
+#include "control_interface.h"
 #include <esp_log.h>
 
 static const char* TAG = "ThermostatController";

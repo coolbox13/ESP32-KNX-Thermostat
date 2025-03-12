@@ -1,4 +1,4 @@
-#include "communication/mqtt/mqtt_interface.h"
+#include "mqtt_interface.h"
 #include "thermostat_state.h"
 #include "protocol_manager.h"
 #include <ArduinoJson.h>

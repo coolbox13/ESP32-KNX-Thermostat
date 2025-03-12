@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <ArduinoJson.h>
 #include <esp-knx-ip.h>
-#include "communication/knx/knx_interface.h"
+#include "knx_interface.h"
 #include "protocol_manager.h"
 #include "thermostat_state.h"
 #include <esp_log.h>

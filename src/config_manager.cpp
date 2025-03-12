@@ -1,14 +1,14 @@
 // Basic includes
 #include <Arduino.h>
-#include <ESPAsyncWebServer.h>
-#include <DNSServer.h>
 #include <WiFi.h>
+#include <DNSServer.h>
+#include <ESPAsyncWebServer.h>
 
 // Include the ThermostatState first since other components depend on it
 #include "thermostat_state.h"
 
 // Then include your component headers
-#include "communication/knx/knx_interface.h"
+#include "knx_interface.h"
 #include "config_manager.h"
 #include <ESPAsyncWiFiManager.h>
 #include <LittleFS.h>
@@ -17,7 +17,7 @@
 #include <esp_log.h>
 #include "pid_controller.h"
 #include "protocol_types.h"
-#include "communication/mqtt/mqtt_interface.h"
+#include "mqtt_interface.h"
 
 static const char* TAG = "ConfigManager";
 
@@ -25,7 +25,7 @@ ConfigManager::ConfigManager() {
     // Initialize default values
     strlcpy(deviceName, "ESP32 Thermostat", sizeof(deviceName));
     
-    // Web interface defaults
+    // Web interface defaults (kept for config file compatibility)
     strlcpy(webUsername, "admin", sizeof(webUsername));
     strlcpy(webPassword, "admin", sizeof(webPassword));
     
@@ -51,17 +51,14 @@ ConfigManager::ConfigManager() {
         .maxOutput = 100.0f,
         .sampleTime = 30000.0f
     };
+    
+    // WiFi credentials
+    strlcpy(wifiSSID, "", sizeof(wifiSSID));
+    strlcpy(wifiPassword, "", sizeof(wifiPassword));
 }
 
 bool ConfigManager::begin() {
-    // Initialize LittleFS
-    if (!LittleFS.begin(true)) {
-        ESP_LOGE(TAG, "Failed to mount file system");
-        lastError = ThermostatStatus::ERROR_FILESYSTEM;
-        return false;
-    }
-
-    // Load the configuration
+    // LittleFS is now initialized in main.cpp
     return loadConfig();
 }
 
@@ -95,6 +92,13 @@ bool ConfigManager::loadConfig() {
     if (web) {
         strlcpy(webUsername, web["username"] | "admin", sizeof(webUsername));
         strlcpy(webPassword, web["password"] | "admin", sizeof(webPassword));
+    }
+
+    // Load WiFi settings
+    JsonObject wifi = doc["wifi"];
+    if (wifi) {
+        strlcpy(wifiSSID, wifi["ssid"] | "", sizeof(wifiSSID));
+        strlcpy(wifiPassword, wifi["password"] | "", sizeof(wifiPassword));
     }
 
     // Load KNX settings
@@ -162,6 +166,11 @@ bool ConfigManager::saveConfig() {
     JsonObject web = doc.containsKey("web") ? doc["web"].as<JsonObject>() : doc.createNestedObject("web");
     web["username"] = webUsername;
     web["password"] = webPassword;
+    
+    // WiFi settings
+    JsonObject wifi = doc.containsKey("wifi") ? doc["wifi"].as<JsonObject>() : doc.createNestedObject("wifi");
+    wifi["ssid"] = wifiSSID;
+    wifi["password"] = wifiPassword;
     
     // KNX settings
     JsonObject knx = doc.containsKey("knx") ? doc["knx"].as<JsonObject>() : doc.createNestedObject("knx");
@@ -358,12 +367,10 @@ void ConfigManager::setSetpoint(float value) {
     setpoint = value;
 }
 
-// Add a basic WiFi setup implementation
+// Add a WiFi setup implementation with WiFi Manager fallback
 bool ConfigManager::setupWiFi() {
-    // Load credentials from storage
+    // Try to connect with stored credentials if available
     if (strlen(wifiSSID) > 0 && strlen(wifiPassword) > 0) {
-        // Try connecting with stored credentials
-        WiFi.mode(WIFI_STA);
         WiFi.begin(wifiSSID, wifiPassword);
         
         // Wait for connection with timeout
@@ -373,6 +380,7 @@ bool ConfigManager::setupWiFi() {
                 return true;
             }
             delay(500);
+            ESP_LOGI(TAG, "Connecting to WiFi...");
         }
     }
     
@@ -391,17 +399,15 @@ bool ConfigManager::setupWiFi() {
         String newPass = WiFi.psk();
         
         // Store new credentials
-        strncpy(wifiSSID, newSSID.c_str(), sizeof(wifiSSID) - 1);
-        wifiSSID[sizeof(wifiSSID) - 1] = '\0';
-        
-        strncpy(wifiPassword, newPass.c_str(), sizeof(wifiPassword) - 1);
-        wifiPassword[sizeof(wifiPassword) - 1] = '\0';
+        strlcpy(wifiSSID, newSSID.c_str(), sizeof(wifiSSID));
+        strlcpy(wifiPassword, newPass.c_str(), sizeof(wifiPassword));
         
         // Save to persistent storage
         saveConfig();
         return true;
     }
     
+    ESP_LOGE(TAG, "Failed to connect to WiFi");
     return false;
 }
 

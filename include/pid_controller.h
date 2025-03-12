@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interfaces/control_interface.h"
+#include "control_interface.h"
 #include "thermostat_types.h"
 #include "thermostat_state.h"
 

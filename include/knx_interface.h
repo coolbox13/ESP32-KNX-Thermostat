@@ -2,7 +2,7 @@
 
 #include <memory>
 #include <ArduinoJson.h>
-#include "interfaces/protocol_interface.h"
+#include "protocol_interface.h"
 #include "protocol_types.h"
 #include "thermostat_types.h"
 #include "thermostat_state.h"

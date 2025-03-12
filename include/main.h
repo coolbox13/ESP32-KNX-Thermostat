@@ -1,1 +1,3 @@
-void testSaveConfig();
+#pragma once
+
+void listFiles();

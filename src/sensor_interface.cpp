@@ -1,4 +1,4 @@
-#include "interfaces/sensor_interface.h"
+#include "sensor_interface.h"
 #include <esp_log.h>
 
 static const char* TAG = "SensorInterface";

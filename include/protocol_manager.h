@@ -1,10 +1,10 @@
 #pragma once
 
 #include <vector>
-#include "interfaces/protocol_interface.h"
+#include "protocol_interface.h"
 #include "thermostat_state.h"
-#include "communication/knx/knx_interface.h"
-#include "communication/mqtt/mqtt_interface.h"
+#include "knx_interface.h"
+#include "mqtt_interface.h"
 #include "protocol_types.h"
 #include <mutex>
 // Forward declarations

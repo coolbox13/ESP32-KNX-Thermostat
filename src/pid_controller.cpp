@@ -4,7 +4,7 @@
 #include "esp_log.h"
 
 #include "thermostat_state.h"
-#include "control/pid_controller.h"
+#include "pid_controller.h"
 
 static const char* TAG = "PIDController";
 

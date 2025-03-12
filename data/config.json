@@ -7,6 +7,10 @@
       "username": "admin",
       "password": "admin"
     },
+    "wifi": {
+      "ssid": "",
+      "password": ""
+    },
     "knx": {
       "enabled": true,
       "physical": {
@@ -28,8 +32,12 @@
       "kp": 2.0,
       "ki": 0.5,
       "kd": 1.0,
-      "minOutput": 0,
-      "maxOutput": 100,
-      "sampleTime": 30000
+      "minOutput": 0.0,
+      "maxOutput": 100.0,
+      "sampleTime": 30000.0
+    },
+    "device": {
+      "name": "ESP32 Thermostat",
+      "sendInterval": 60000
     }
   }

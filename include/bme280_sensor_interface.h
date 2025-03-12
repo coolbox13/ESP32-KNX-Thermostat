@@ -1,6 +1,6 @@
 #pragma once
 
-#include "interfaces/sensor_interface.h"  // Use the abstract sensor interface from interfaces folder
+#include "sensor_interface.h"  // Use the abstract sensor interface
 #include <Adafruit_BME280.h>
 #include <Wire.h>
 #include <esp_log.h>

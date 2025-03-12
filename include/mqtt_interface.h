@@ -7,7 +7,7 @@
 #include <PubSubClient.h>
 #include <WiFiClient.h>
 #include <memory>
-#include "interfaces/protocol_interface.h"
+#include "protocol_interface.h"
 #include "protocol_manager.h"
 #include "thermostat_state.h"
 

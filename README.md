@@ -1,87 +1,97 @@
-# ESP32-KNX-Thermostat
+# ESP32-KNX-Thermostat (Minimal Version)
 
-A modular smart thermostat system built on ESP32 that integrates with KNX building automation networks, providing advanced climate control with multiple connectivity options.
+This is a minimized version of the ESP32-KNX-Thermostat project, focusing on core functionality without the web interface and OTA update capabilities.
 
 ## Features
 
-- **Multi-Protocol Support**: Native KNX integration plus MQTT connectivity for home automation systems
-- **Advanced Climate Control**: PID-based temperature regulation for precise comfort
-- **Sensor Integration**: BME280 temperature/humidity/pressure monitoring
-- **Web Interface**: Mobile-responsive configuration dashboard
-- **Flexible Operation Modes**: Comfort, Eco, Away, Boost, and Anti-freeze
-- **Secure Connectivity**: Optional TLS support for MQTT connections
-- **OTA Updates**: Remote firmware upgrades
-- **Modular Architecture**: Interface-based design for easy extension
+- **PID Control**: Precise temperature control using PID algorithm
+- **BME280 Sensor**: Temperature, humidity, and pressure sensing
+- **KNX Interface**: Integration with KNX building automation systems
+- **MQTT Interface**: Integration with MQTT for IoT connectivity
+- **Configuration via JSON**: Simple configuration using a JSON file stored in LittleFS
+- **WiFi Manager**: Fallback to AP mode for WiFi configuration if connection fails
+
+## Removed Features
+
+- Web interface for configuration
+- OTA (Over-The-Air) updates
 
 ## Hardware Requirements
 
-- ESP32 development board (NodeMCU ESP32-S recommended)
-- BME280 sensor module
-- I²C connection cables
-- Power supply (USB or 5V DC)
+- ESP32 development board
+- BME280 sensor (I2C interface)
+- KNX interface hardware (if using KNX)
 
-## Getting Started
+## Configuration
 
-### Prerequisites
+Configuration is done by editing the `config.json` file and uploading it to the ESP32's LittleFS filesystem. The file should have the following structure:
 
-- PlatformIO IDE (recommended) or Arduino IDE
-- Git client
-
-### Installation
-
-1. Clone this repository:
-   ```
-   git clone https://github.com/yourusername/ESP32-KNX-Thermostat.git
-   ```
-
-2. Open the project in PlatformIO or configure Arduino IDE with required libraries
-   
-3. Set your configuration in `data/config.json` or use the web interface after installation
-
-4. Build and upload to your ESP32 device
-
-### Initial Configuration
-
-After uploading, the thermostat creates a WiFi access point named "Thermostat-Setup". Connect to this network to configure:
-
-1. WiFi credentials
-2. KNX physical/group addresses
-3. Optional MQTT server details
-4. Temperature control parameters
-
-## KNX Integration
-
-The thermostat uses standard KNX datapoints:
-- Temperature: DPT 9.001 (2-byte float)
-- Setpoint: DPT 9.001 (2-byte float)
-- Valve Position: DPT 5.001 (1-byte percentage)
-- Operating Mode: DPT 20.102 (1-byte HVAC mode)
-
-## Project Structure
-
-```
-ESP32-KNX-Thermostat/
-├── include/                 # Header files
-│   ├── interfaces/          # Abstract interfaces
-│   ├── communication/       # Protocol implementations
-│   ├── sensors/             # Sensor implementations
-│   └── web/                 # Web interface
-├── src/                     # Implementation files
-├── data/                    # Web files and configuration
-└── platformio.ini           # PlatformIO configuration
+```json
+{
+  "web": {
+    "username": "admin",
+    "password": "admin"
+  },
+  "wifi": {
+    "ssid": "your_wifi_ssid",
+    "password": "your_wifi_password"
+  },
+  "knx": {
+    "enabled": true,
+    "physical": {
+      "area": 1,
+      "line": 1,
+      "member": 160
+    }
+  },
+  "mqtt": {
+    "enabled": true,
+    "server": "192.168.178.32",
+    "port": 1883,
+    "username": "",
+    "password": "",
+    "clientId": "esp32_thermostat",
+    "topicPrefix": "esp32/thermostat/"
+  },
+  "pid": {
+    "kp": 2.0,
+    "ki": 0.5,
+    "kd": 1.0,
+    "minOutput": 0.0,
+    "maxOutput": 100.0,
+    "sampleTime": 30000.0
+  },
+  "device": {
+    "name": "ESP32 Thermostat",
+    "sendInterval": 60000
+  }
+}
 ```
 
-## Development
+## WiFi Configuration
 
-The project follows an interface-based architecture that facilitates extension:
-- Add new sensors by implementing the `SensorInterface`
-- Add new communication protocols via `ProtocolInterface`
-- Customize control algorithms through `ControlInterface`
+WiFi credentials can be configured in two ways:
+
+1. **Via config.json**: Edit the `wifi` section in the `config.json` file with your SSID and password.
+
+2. **Via WiFi Manager**: If the device cannot connect to WiFi using the stored credentials, it will create an access point named "ESP32-Thermostat". Connect to this AP with your phone or computer, and a configuration portal will open where you can enter your WiFi credentials.
+
+## Building and Flashing
+
+1. Install PlatformIO
+2. Clone this repository
+3. Build the project: `pio run`
+4. Upload to ESP32: `pio run --target upload`
+5. Upload filesystem: `pio run --target uploadfs`
+
+## Monitoring
+
+You can monitor the device using the serial port:
+
+```
+pio device monitor
+```
 
 ## License
 
-This project is released under the MIT License.
-
-## Contributing
-
-Contributions are welcome! Please follow the existing architecture and coding style when submitting pull requests.
+This project is licensed under the MIT License - see the LICENSE file for details.

@@ -1,4 +1,4 @@
-#include "sensors/bme280_sensor_interface.h"
+#include "bme280_sensor_interface.h"
 #include <Wire.h>
 #include <esp_log.h>
 
