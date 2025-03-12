@@ -283,11 +283,11 @@ String HtmlGenerator::generatePIDSection(ControlInterface* control, const String
 
 String HtmlGenerator::generateFooter() {
     return R"(
-    <footer>
-        <p>&copy; 2025 Coolbox</p>
-    </footer>
-    <script src="/scripts.js"></script>
-    </body>
-    </html>
-    )";
+<footer>
+    <p>&copy; 2025 Coolbox</p>
+</footer>
+<script src="/scripts.js"></script>
+</body>
+</html>
+)";
 }

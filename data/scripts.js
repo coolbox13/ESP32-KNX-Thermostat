@@ -138,29 +138,41 @@ window.factoryReset = async function factoryReset() {
 // (Optional) Example updatePID function if needed
 window.updatePID = async function updatePID() {
     try {
+        // Get form values
         const kp = parseFloat(document.getElementById('kp').value);
         const ki = parseFloat(document.getElementById('ki').value);
         const kd = parseFloat(document.getElementById('kd').value);
         const pidActive = document.getElementById('pidActive').checked;
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
         
-        // Construct a JSON object with your PID parameters
-        const bodyData = JSON.stringify({
+        // Validate input values
+        if (isNaN(kp) || isNaN(ki) || isNaN(kd)) {
+            throw new Error('Invalid PID parameters. Please enter valid numbers.');
+        }
+        
+        // Construct JSON payload
+        const payload = {
             kp: kp,
             ki: ki,
             kd: kd,
             active: pidActive
-        });
+        };
         
+        // URL-encode the JSON payload with the key "plain"
+        const bodyData = new URLSearchParams();
+        bodyData.append('plain', JSON.stringify(payload));
+        
+        // Send the request
         const response = await fetch('/pid', {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
                 'X-CSRF-Token': csrfToken
             },
             body: bodyData
         });
         
+        // Check for errors in the response
         if (!response.ok) {
             const errorData = await response.json();
             throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
@@ -172,6 +184,11 @@ window.updatePID = async function updatePID() {
         alert('PID parameters updated successfully');
     } catch (error) {
         logError('Failed to update PID: ' + error);
+        // Log the error to the console
+        console.error('Failed to update PID:', error);
+
+        // Show a user-friendly error message
+        alert('Failed to update PID: ' + error.message);
     }
 }
 
