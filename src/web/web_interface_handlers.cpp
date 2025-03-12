@@ -41,26 +41,12 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
 
     if (!validateCSRFToken(request)) {
         ESP_LOGW(TAG, "Invalid CSRF token from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(403, "application/json", "{\"status\":\"error\",\"message\":\"Invalid CSRF token\"}");
+        request->send(403, "text/plain", "Invalid CSRF token");
         return;
     }
 
-    // Check if we're receiving form data or JSON
-    bool isFormData = request->contentType().equals("application/x-www-form-urlencoded");
-    bool isJsonData = request->contentType().equals("application/json");
-    
-    if (!isFormData && !isJsonData) {
-        ESP_LOGW(TAG, "Unsupported content type: %s", request->contentType().c_str());
-        request->send(400, "application/json", "{\"status\":\"error\",\"message\":\"Unsupported content type\"}");
-        return;
-    }
-
-    // Process device settings
-    if (request->hasParam("deviceName", true)) {
-        configManager->setDeviceName(request->getParam("deviceName", true)->value().c_str());
-        ESP_LOGI(TAG, "Device name updated to: %s", request->getParam("deviceName", true)->value().c_str());
-    } else if (isJsonData && request->hasParam("plain", true)) {
-        // Process JSON data
+    // Process JSON data
+    if (request->hasParam("plain", true)) {
         String jsonData = request->getParam("plain", true)->value();
         StaticJsonDocument<1024> doc;
         DeserializationError error = deserializeJson(doc, jsonData);
@@ -73,7 +59,7 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
         
         // Process device name from JSON
         if (doc.containsKey("deviceName")) {
-            configManager->setDeviceName(doc["deviceName"].as<const char*>());
+            configManager->setDeviceName(doc["deviceName"]);
             ESP_LOGI(TAG, "Device name updated to: %s", doc["deviceName"].as<const char*>());
         }
         
@@ -83,10 +69,18 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
             ESP_LOGI(TAG, "Update interval set to: %lu", doc["updateInterval"].as<unsigned long>());
         }
         
+        // Process web credentials
+        if (doc.containsKey("webUsername")) {
+            configManager->setWebUsername(doc["webUsername"]);
+        }
+        
+        if (doc.containsKey("webPassword")) {
+            configManager->setWebPassword(doc["webPassword"]);
+        }
+        
         // Process KNX address
         if (doc.containsKey("knxAddress")) {
             String addr = doc["knxAddress"];
-            // Parse KNX address (format: area.line.member)
             int firstDot = addr.indexOf('.');
             int secondDot = addr.indexOf('.', firstDot + 1);
             
@@ -137,43 +131,32 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
         if (doc.containsKey("mqttTopicPrefix")) {
             configManager->setMQTTTopicPrefix(doc["mqttTopicPrefix"]);
         }
-    }
-    
-    // Process form data
-    if (isFormData) {
-        if (request->hasParam("updateInterval", true)) {
-            uint32_t interval = request->getParam("updateInterval", true)->value().toInt();
-            if (interval > 0) {
-                configManager->setSendInterval(interval);
-                ESP_LOGI(TAG, "Update interval set to: %u ms", interval);
-            }
-        }
         
-        if (request->hasParam("knxAddress", true)) {
-            String addr = request->getParam("knxAddress", true)->value();
-            // Parse KNX address (format: area.line.member)
-            int firstDot = addr.indexOf('.');
-            int secondDot = addr.indexOf('.', firstDot + 1);
+        // Process PID settings if present
+        if (doc.containsKey("pid")) {
+            JsonObject pid = doc["pid"];
+            if (pid.containsKey("kp")) configManager->setKp(pid["kp"]);
+            if (pid.containsKey("ki")) configManager->setKi(pid["ki"]);
+            if (pid.containsKey("kd")) configManager->setKd(pid["kd"]);
             
-            if (firstDot > 0 && secondDot > firstDot) {
-                uint8_t area = addr.substring(0, firstDot).toInt();
-                uint8_t line = addr.substring(firstDot + 1, secondDot).toInt();
-                uint8_t member = addr.substring(secondDot + 1).toInt();
-                
-                configManager->setKnxPhysicalAddress(area, line, member);
-                ESP_LOGI(TAG, "KNX address set to: %d.%d.%d", area, line, member);
+            // Update PID controller to match config
+            if (pidController) {
+                PIDConfig config = {
+                    .kp = configManager->getKp(),
+                    .ki = configManager->getKi(),
+                    .kd = configManager->getKd(),
+                    .minOutput = pidController->getMinOutput(),
+                    .maxOutput = pidController->getMaxOutput(),
+                    .sampleTime = pidController->getSampleTime()
+                };
+                pidController->configure(&config);
             }
         }
     }
     
-    ESP_LOGI(TAG, "Calling configManager->saveConfig()");
-    bool saveResult = configManager->saveConfig();
-    ESP_LOGI(TAG, "configManager->saveConfig() returned: %s", saveResult ? "true" : "false");
-    if (!saveResult) {
-        ESP_LOGE(TAG, "Failed to save configuration");
-        request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to save configuration\"}");
-        return;
-    }
+    // Save configuration to flash
+    configManager->saveConfig();
+    ESP_LOGI(TAG, "Configuration saved successfully");
     
     // Return a JSON response
     request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"Configuration saved\"}");
@@ -208,7 +191,7 @@ void WebInterface::handleGetStatus(AsyncWebServerRequest *request) {
     ESP_LOGD(TAG, "Status sent to IP: %s", request->client()->remoteIP().toString().c_str());
 }
 
-void WebInterface::handleSetpoint(AsyncWebServerRequest *request) {
+void WebInterface::handleSetpoint(AsyncWebServerRequest* request) {
     if (!isAuthenticated(request)) {
         requestAuthentication(request);
         return;
@@ -227,11 +210,15 @@ void WebInterface::handleSetpoint(AsyncWebServerRequest *request) {
     }
 
     float setpoint = request->getParam("setpoint", true)->value().toFloat();
+    
+    // Update both thermostat state and config manager
     thermostatState->setTargetTemperature(setpoint);
     configManager->setSetpoint(setpoint);
+    
+    // Save configuration to flash
     configManager->saveConfig();
+    
     ESP_LOGI(TAG, "Setpoint updated to: %.1f°C", setpoint);
-
     request->send(200, "text/plain", "Setpoint updated");
 }
 
@@ -258,14 +245,14 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
     String jsonData = request->getParam("plain", true)->value();
     StaticJsonDocument<256> doc;
     DeserializationError error = deserializeJson(doc, jsonData);
-
+    
     if (error) {
         ESP_LOGW(TAG, "Invalid JSON from IP: %s - %s", 
                  request->client()->remoteIP().toString().c_str(), error.c_str());
         request->send(400, "application/json", "{\"error\":\"Invalid JSON: " + String(error.c_str()) + "\"}");
         return;
     }
-
+    
     bool updated = false;
     
     // Get current PID configuration
@@ -281,18 +268,21 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
     // Update individual parameters
     if (doc.containsKey("kp")) {
         config.kp = doc["kp"].as<float>();
+        configManager->setKp(config.kp);  // Update ConfigManager
         updated = true;
         ESP_LOGI(TAG, "PID Kp updated to: %.2f", config.kp);
     }
     
     if (doc.containsKey("ki")) {
         config.ki = doc["ki"].as<float>();
+        configManager->setKi(config.ki);  // Update ConfigManager
         updated = true;
         ESP_LOGI(TAG, "PID Ki updated to: %.2f", config.ki);
     }
     
     if (doc.containsKey("kd")) {
         config.kd = doc["kd"].as<float>();
+        configManager->setKd(config.kd);  // Update ConfigManager
         updated = true;
         ESP_LOGI(TAG, "PID Kd updated to: %.2f", config.kd);
     }
@@ -317,8 +307,8 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
         return;
     }
     
-    // Save PID configuration
-    pidController->saveConfig();
+    // Save configuration to flash
+    configManager->saveConfig();
     
     // Return success response
     request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"PID parameters updated successfully\"}");
@@ -392,6 +382,9 @@ void WebInterface::handleMode(AsyncWebServerRequest* request) {
         return;
     }
 
+    // Save configuration to ensure mode persists
+    configManager->saveConfig();
+    
     ESP_LOGI(TAG, "Mode updated to: %s", mode.c_str());
     request->send(200, "text/plain", "Mode updated");
 }
