@@ -168,6 +168,7 @@ void WebInterface::handleSave(AsyncWebServerRequest *request) {
     
     ESP_LOGI(TAG, "Calling configManager->saveConfig()");
     bool saveResult = configManager->saveConfig();
+    ESP_LOGI(TAG, "configManager->saveConfig() returned: %s", saveResult ? "true" : "false");
     if (!saveResult) {
         ESP_LOGE(TAG, "Failed to save configuration");
         request->send(500, "application/json", "{\"status\":\"error\",\"message\":\"Failed to save configuration\"}");
