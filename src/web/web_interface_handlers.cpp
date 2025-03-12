@@ -239,13 +239,14 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
 
     if (!validateCSRFToken(request)) {
         ESP_LOGW(TAG, "Invalid CSRF token from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(403, "text/plain", "Invalid CSRF token");
+        request->send(403, "application/json", "{\"error\":\"Invalid CSRF token\"}");
         return;
     }
 
+    // For AsyncWebServer, JSON comes in the "plain" parameter
     if (!request->hasParam("plain", true)) {
         ESP_LOGW(TAG, "Missing JSON data from IP: %s", request->client()->remoteIP().toString().c_str());
-        request->send(400, "text/plain", "Missing JSON data");
+        request->send(400, "application/json", "{\"error\":\"Missing JSON data\"}");
         return;
     }
 
@@ -256,7 +257,7 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
     if (error) {
         ESP_LOGW(TAG, "Invalid JSON from IP: %s - %s", 
                  request->client()->remoteIP().toString().c_str(), error.c_str());
-        request->send(400, "text/plain", "Invalid JSON data");
+        request->send(400, "application/json", "{\"error\":\"Invalid JSON: " + String(error.c_str()) + "\"}");
         return;
     }
     
@@ -291,7 +292,7 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
         ESP_LOGI(TAG, "PID Kd updated to: %.2f", config.kd);
     }
     
-    // Apply the configuration
+    // Apply the configuration if parameters were updated
     if (updated) {
         pidController->configure(&config);
     }
@@ -307,11 +308,15 @@ void WebInterface::handlePID(AsyncWebServerRequest* request) {
     if (!updated) {
         ESP_LOGW(TAG, "No valid PID parameters found in request from IP: %s", 
                  request->client()->remoteIP().toString().c_str());
-        request->send(400, "text/plain", "No valid PID parameters provided");
+        request->send(400, "application/json", "{\"error\":\"No valid PID parameters provided\"}");
         return;
     }
     
-    request->send(200, "application/json", "{\"status\":\"ok\"}");
+    // Save PID configuration
+    pidController->saveConfig();
+    
+    // Return success response
+    request->send(200, "application/json", "{\"status\":\"ok\",\"message\":\"PID parameters updated successfully\"}");
 }
 
 void WebInterface::handleReboot(AsyncWebServerRequest *request) {

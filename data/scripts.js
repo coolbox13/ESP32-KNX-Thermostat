@@ -138,35 +138,38 @@ window.factoryReset = async function factoryReset() {
 // (Optional) Example updatePID function if needed
 window.updatePID = async function updatePID() {
     try {
-        const kp = document.getElementById('kp').value;
-        const ki = document.getElementById('ki').value;
-        const kd = document.getElementById('kd').value;
-        const active = document.getElementById('pidActive').checked;
+        const kp = parseFloat(document.getElementById('kp').value);
+        const ki = parseFloat(document.getElementById('ki').value);
+        const kd = parseFloat(document.getElementById('kd').value);
+        const pidActive = document.getElementById('pidActive').checked;
         const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
-
-        const payload = {
-            kp: parseFloat(kp),
-            ki: parseFloat(ki),
-            kd: parseFloat(kd),
-            active: active
-        };
-
+        
+        // Construct a JSON object with your PID parameters
+        const bodyData = JSON.stringify({
+            kp: kp,
+            ki: ki,
+            kd: kd,
+            active: pidActive
+        });
+        
         const response = await fetch('/pid', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-Token': csrfToken
             },
-            body: JSON.stringify(payload)
+            body: bodyData
         });
-
+        
         if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
+            const errorData = await response.json();
+            throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
         }
 
         console.log('PID update successful');
         location.reload();
 
+        alert('PID parameters updated successfully');
     } catch (error) {
         logError('Failed to update PID: ' + error);
     }

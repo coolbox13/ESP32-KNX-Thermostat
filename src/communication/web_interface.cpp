@@ -30,10 +30,9 @@ bool WebInterface::begin() {
     
     // Note: LittleFS is now initialized in main.cpp
 
-    // Serve the CSS file
-    server.serveStatic("/style.css", LittleFS, "/style.css");
-    // Serve the JS file
-    server.serveStatic("/scripts.js", LittleFS, "/scripts.js");
+    // Serve the CSS file and JS file with caching headers
+    server.serveStatic("/style.css", LittleFS, "/style.css", "max-age=86400").setDefaultFile("style.css");
+    server.serveStatic("/scripts.js", LittleFS, "/scripts.js", "max-age=86400").setDefaultFile("scripts.js");
     
     try {
         // Set up request handlers
