@@ -1,9 +1,7 @@
 {
-    "wifi": {
-        "ssid": "coolbox_down",
-        "password": "1313131313131"
-    },
-    "device": {
-        "name": "KNX Thermostat"
-    }
-}
+    "deviceName": "Thermostat",
+    "updateInterval": 1000,
+    "knxEnabled": true,
+    "knxAddress": "1.1.1",
+    "mqttEnabled": false
+  }

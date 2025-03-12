@@ -225,9 +225,15 @@ async function showConfig() {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         
-        const config = await response.json();
-        document.getElementById('configContents').textContent = JSON.stringify(config, null, 2);
+        const rawContent = await response.text();
+        
+        // Log the raw content to the browser console
+        console.log('Raw config file content:', rawContent);
+        
+        // Display the raw content in the preformatted block
+        document.getElementById('configContents').textContent = rawContent;
     } catch (error) {
-        logError('Failed to fetch config: ' + error);
+        console.error('Failed to fetch config:', error);
+        document.getElementById('configContents').textContent = 'Error: ' + error.message;
     }
 }

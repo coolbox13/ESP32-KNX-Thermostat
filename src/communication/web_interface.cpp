@@ -229,6 +229,7 @@ void WebInterface::handleGetConfig(AsyncWebServerRequest *request) {
 
     File configFile = LittleFS.open("/config.json", "r");
     if (!configFile) {
+        Serial.println("[WebInterface] Failed to open config file");
         request->send(500, "text/plain", "Failed to open config file");
         return;
     }
@@ -241,18 +242,9 @@ void WebInterface::handleGetConfig(AsyncWebServerRequest *request) {
     // Null-terminate the buffer
     buf[size] = '\0';
 
-    // Log the JSON content
-    Serial.printf("[WebInterface] Config file content: %s\n", buf.get());
+    // Log the raw file contents to the serial monitor
+    Serial.printf("[WebInterface] Raw config file content: %s\n", buf.get());
 
-    // Validate JSON
-    StaticJsonDocument<512> doc;
-    DeserializationError error = deserializeJson(doc, buf.get());
-    if (error) {
-        Serial.printf("[WebInterface] Invalid JSON in config file: %s\n", error.c_str());
-        request->send(500, "text/plain", "Invalid JSON in config file");
-        return;
-    }
-
-    // Send the JSON response
-    request->send(200, "application/json", buf.get());
+    // Send the raw file contents as plain text
+    request->send(200, "text/plain", buf.get());
 }

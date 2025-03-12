@@ -34,8 +34,8 @@ ConfigManager::ConfigManager() {
     knxPhysicalAddress = {1, 1, 160};
     
     // MQTT defaults
-    mqttEnabled = false;
-    strlcpy(mqttServer, "localhost", sizeof(mqttServer));
+    mqttEnabled = true;
+    strlcpy(mqttServer, "192.168.178.32", sizeof(mqttServer));
     mqttPort = 1883;
     strlcpy(mqttUser, "", sizeof(mqttUser));
     strlcpy(mqttPassword, "", sizeof(mqttPassword));
@@ -137,8 +137,22 @@ bool ConfigManager::saveConfig() {
     
     // Create JSON document
     StaticJsonDocument<2048> doc;
-    ESP_LOGI(TAG, "Created JSON document");  // Add this log
-    
+    ESP_LOGI(TAG, "Created JSON document");
+
+    // Read existing config (if it exists)
+    if (LittleFS.exists("/config.json")) {
+        File configFile = LittleFS.open("/config.json", "r");
+        if (configFile) {
+            DeserializationError error = deserializeJson(doc, configFile);
+            configFile.close();
+            if (error) {
+                ESP_LOGE(TAG, "Failed to parse existing config file: %s", error.c_str());
+                return false;
+            }
+            ESP_LOGI(TAG, "Loaded existing config file");
+        }
+    }
+
     // Populate JSON document
     doc["web_username"] = webUsername;
     doc["web_password"] = webPassword;
@@ -159,8 +173,13 @@ bool ConfigManager::saveConfig() {
     doc["pid_minOutput"] = pidConfig.minOutput;
     doc["pid_maxOutput"] = pidConfig.maxOutput;
     doc["pid_sampleTime"] = pidConfig.sampleTime;
-    ESP_LOGI(TAG, "Populated JSON document");  // Add this log
-    
+    ESP_LOGI(TAG, "Populated JSON document");
+
+    // Log the JSON content for debugging
+    String jsonStr;
+    serializeJson(doc, jsonStr);
+    ESP_LOGI(TAG, "JSON content: %s", jsonStr.c_str());
+
     // Open config file for writing
     File configFile = LittleFS.open("/config.json", "w");
     if (!configFile) {
@@ -168,7 +187,7 @@ bool ConfigManager::saveConfig() {
         return false;
     }
     ESP_LOGI(TAG, "Opened config file for writing");
-    
+
     // Serialize JSON to file
     if (serializeJson(doc, configFile) == 0) {
         ESP_LOGE(TAG, "Failed to write config file");
@@ -176,18 +195,18 @@ bool ConfigManager::saveConfig() {
         return false;
     }
     ESP_LOGI(TAG, "Serialized JSON to file");
-    
+
     // Close file
     configFile.close();
     ESP_LOGI(TAG, "Closed config file");
-    
+
     // Verify file exists
     if (!LittleFS.exists("/config.json")) {
         ESP_LOGE(TAG, "Config file does not exist after saving");
         return false;
     }
     ESP_LOGI(TAG, "Config file exists after saving");
-    
+
     ESP_LOGI(TAG, "Configuration saved successfully");
     return true;
 }
